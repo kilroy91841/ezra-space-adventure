@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Player Tests</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        .pass { color: #0f0; }
+        .fail { color: #f00; }
+    </style>
+</head>
+<body>
+    <h1>Player Tests</h1>
+    <div id="results"></div>
+
+    <script type="module">
+        import { Player } from '../../src/entities/Player.js';
+
+        const results = [];
+
+        function test(name, fn) {
+            try {
+                fn();
+                results.push({ name, status: 'pass' });
+            } catch (error) {
+                results.push({ name, status: 'fail', error: error.message });
+            }
+        }
+
+        function assert(condition, message) {
+            if (!condition) throw new Error(message || 'Assertion failed');
+        }
+
+        test('Player initializes with powerups', () => {
+            const player = new Player(100, 100);
+            assert(player.powerups === 0, 'Should start with 0 powerups');
+        });
+
+        test('Player can add powerups', () => {
+            const player = new Player(100, 100);
+            player.addPowerup();
+            assert(player.powerups === 1, 'Should have 1 powerup');
+            player.addPowerup();
+            assert(player.powerups === 2, 'Should have 2 powerups');
+        });
+
+        test('Player can lose powerups', () => {
+            const player = new Player(100, 100);
+            player.addPowerup();
+            player.addPowerup();
+            player.removePowerup();
+            assert(player.powerups === 1, 'Should have 1 powerup after losing one');
+        });
+
+        test('Player powerups cannot go below 0', () => {
+            const player = new Player(100, 100);
+            player.removePowerup();
+            assert(player.powerups === 0, 'Powerups should not go negative');
+        });
+
+        test('Player moves with velocity', () => {
+            const player = new Player(100, 100);
+            player.vx = 5;
+            player.vy = 3;
+            player.update(1);
+            assert(player.x === 105, 'X should increase by vx');
+            assert(player.y === 103, 'Y should increase by vy');
+        });
+
+        // Render results
+        const resultsDiv = document.getElementById('results');
+        results.forEach(r => {
+            const div = document.createElement('div');
+            div.className = r.status;
+            div.textContent = `${r.status.toUpperCase()}: ${r.name}`;
+            if (r.error) div.textContent += ` - ${r.error}`;
+            resultsDiv.appendChild(div);
+        });
+    </script>
+</body>
+</html>
