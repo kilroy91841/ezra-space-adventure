@@ -74,8 +74,8 @@ export class BossDimension extends Dimension {
             this.bossDefeatedTime += deltaTime;
 
             // Complete dimension after showing victory for a bit
-            // Give more time to collect power-ups! (300 frames = 5 seconds)
-            if (this.bossDefeatedTime > 300 && !this.completed) {
+            // Give time to collect power-ups! (180 frames = 3 seconds)
+            if (this.bossDefeatedTime > 180 && !this.completed) {
                 this.complete();
             }
         }
@@ -99,10 +99,25 @@ export class BossDimension extends Dimension {
             ctx.fillStyle = '#00ff00';
             ctx.font = 'bold 48px Courier New';
             ctx.textAlign = 'center';
-            ctx.fillText('VICTORY!', 400, 300);
+            ctx.shadowColor = '#00ff00';
+            ctx.shadowBlur = 10;
+            ctx.fillText('✓ VICTORY!', 400, 280);
+            ctx.shadowBlur = 0;
 
             ctx.font = '24px Courier New';
-            ctx.fillText('Collect the power-ups!', 400, 350);
+            ctx.fillText('Collect the power-ups!', 400, 330);
+
+            // Countdown to next dimension
+            const timeLeft = Math.ceil((180 - this.bossDefeatedTime) / 60);
+            if (timeLeft > 0) {
+                ctx.fillStyle = '#ffff00';
+                ctx.font = '20px Courier New';
+                ctx.fillText(`Next dimension in ${timeLeft}...`, 400, 370);
+            } else {
+                ctx.fillStyle = '#ffff00';
+                ctx.font = 'bold 28px Courier New';
+                ctx.fillText('Get Ready!', 400, 370);
+            }
         }
     }
 

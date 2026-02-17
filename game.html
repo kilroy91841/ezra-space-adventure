@@ -470,27 +470,60 @@
                 ctx.fillText('Get power-ups or restart level!', 400, 595);
             }
 
-            // Victory screen
+            // Victory screen - EPIC!
             if (gameWon) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                // Dark overlay
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+                // Animated stars around victory text
+                const victoryTime = Date.now() / 100;
+                for (let i = 0; i < 20; i++) {
+                    const angle = (i / 20) * Math.PI * 2 + victoryTime * 0.1;
+                    const radius = 150 + Math.sin(victoryTime * 0.2 + i) * 20;
+                    const x = 400 + Math.cos(angle) * radius;
+                    const y = 200 + Math.sin(angle) * radius;
+                    ctx.fillStyle = `hsl(${(i * 18 + victoryTime * 10) % 360}, 100%, 50%)`;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Main victory text
                 ctx.fillStyle = '#00ff00';
-                ctx.font = 'bold 64px Courier New';
+                ctx.font = 'bold 72px Courier New';
                 ctx.textAlign = 'center';
-                ctx.fillText('YOU WIN!', 400, 250);
+                ctx.shadowColor = '#00ff00';
+                ctx.shadowBlur = 20;
+                ctx.fillText('🎉 YOU DID IT! 🎉', 400, 200);
+                ctx.shadowBlur = 0;
 
                 ctx.fillStyle = '#ffff00';
-                ctx.font = '32px Courier New';
-                ctx.fillText('The Dragon is Defeated!', 400, 320);
+                ctx.font = 'bold 40px Courier New';
+                ctx.fillText('The Dragon is Defeated!', 400, 270);
 
+                // Robot victory pose
+                ctx.save();
+                ctx.translate(400, 340);
+                ctx.scale(2, 2);
+                player.render(ctx);
+                ctx.restore();
+
+                // Stats
                 ctx.fillStyle = '#fff';
-                ctx.font = '24px Courier New';
-                ctx.fillText(`Final Score: ${engine.state.score}`, 400, 380);
-                ctx.fillText(`Power-Ups: ${player.powerups}`, 400, 420);
+                ctx.font = 'bold 28px Courier New';
+                ctx.fillText(`Final Score: ${engine.state.score}`, 400, 450);
+                ctx.fillText(`Power-Ups Collected: ${player.powerups}`, 400, 485);
 
-                ctx.font = '18px Courier New';
-                ctx.fillText('Press F5 to play again', 400, 470);
+                // Dimensions completed
+                ctx.font = '20px Courier New';
+                ctx.fillStyle = '#00ffaa';
+                ctx.fillText('✓ Completed All 5 Dimensions!', 400, 520);
+
+                // Play again
+                ctx.font = 'bold 22px Courier New';
+                ctx.fillStyle = '#ffff00';
+                ctx.fillText('Press F5 to play again!', 400, 565);
             }
 
             // Update UI
