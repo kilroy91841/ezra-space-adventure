@@ -24,7 +24,7 @@ export class BossDimension extends Dimension {
         this.showingVictory = false;
     }
 
-    update(deltaTime, gameState) {
+    update(deltaTime, gameState, player) {
         // Move boss into view
         if (this.boss.y < 50) {
             this.boss.y += 2 * deltaTime;

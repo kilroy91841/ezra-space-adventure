@@ -74,7 +74,7 @@ export class MathPuzzleDimension extends Dimension {
         return problems;
     }
 
-    update(deltaTime, gameState) {
+    update(deltaTime, gameState, player) {
         if (this.showingFeedback) {
             this.feedbackTimer += deltaTime;
             if (this.feedbackTimer > 60) { // 1 second
