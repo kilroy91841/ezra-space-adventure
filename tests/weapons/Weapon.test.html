@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weapon Tests</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        .pass { color: #0f0; }
+        .fail { color: #f00; }
+    </style>
+</head>
+<body>
+    <h1>Weapon Tests</h1>
+    <div id="results"></div>
+
+    <script type="module">
+        import { Weapon, WeaponType } from '../../src/weapons/Weapon.js';
+
+        const results = [];
+
+        function test(name, fn) {
+            try {
+                fn();
+                results.push({ name, status: 'pass' });
+            } catch (error) {
+                results.push({ name, status: 'fail', error: error.message });
+            }
+        }
+
+        function assert(condition, message) {
+            if (!condition) throw new Error(message || 'Assertion failed');
+        }
+
+        test('Weapon has type and damage', () => {
+            const weapon = new Weapon('Laser', WeaponType.SHOOTER, 10);
+            assert(weapon.name === 'Laser', 'Name should be Laser');
+            assert(weapon.type === WeaponType.SHOOTER, 'Type should be SHOOTER');
+            assert(weapon.baseDamage === 10, 'Damage should be 10');
+        });
+
+        test('Weapon calculates damage with powerups', () => {
+            const weapon = new Weapon('Laser', WeaponType.SHOOTER, 10);
+            const damage = weapon.calculateDamage(3);
+            assert(damage === 13, 'Damage should be 10 + 3 powerups');
+        });
+
+        test('WeaponType enum exists', () => {
+            assert(WeaponType.SHOOTER !== undefined);
+            assert(WeaponType.MELEE !== undefined);
+            assert(WeaponType.SUMMON !== undefined);
+        });
+
+        // Render results
+        const resultsDiv = document.getElementById('results');
+        results.forEach(r => {
+            const div = document.createElement('div');
+            div.className = r.status;
+            div.textContent = `${r.status.toUpperCase()}: ${r.name}`;
+            if (r.error) div.textContent += ` - ${r.error}`;
+            resultsDiv.appendChild(div);
+        });
+    </script>
+</body>
+</html>
