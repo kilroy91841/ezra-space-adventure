@@ -56,6 +56,12 @@
     <script type="module">
         import { GameEngine } from './src/engine/GameEngine.js';
         import { Player } from './src/entities/Player.js';
+        import { DimensionManager } from './src/dimensions/DimensionManager.js';
+        import { CollectionDimension } from './src/dimensions/CollectionDimension.js';
+        import { BossDimension } from './src/dimensions/BossDimension.js';
+        import { AlienBoss } from './src/entities/AlienBoss.js';
+        import { MiniDragonBoss, DragonBoss } from './src/entities/DragonBoss.js';
+        import { IceShooter, FireShooter, GiantSword, BigBomb } from './src/weapons/EzraWeapons.js';
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -64,8 +70,38 @@
         const engine = new GameEngine();
 
         // Create player
-        const player = new Player(400, 500);
+        const player = new Player(385, 500);
         engine.addEntity(player);
+
+        // Give player Ezra's favorite weapons!
+        player.weapon = new IceShooter(); // Start with Ice Shooter
+        player.inventory = [
+            new IceShooter(),
+            new FireShooter(),
+            new GiantSword(),
+            new BigBomb()
+        ];
+        let currentWeaponIndex = 0;
+
+        // Create dimension manager
+        const dimensionManager = new DimensionManager();
+
+        // Add dimensions
+        dimensionManager.addDimension(new CollectionDimension(1, 'Power-Up Hunt'));
+        dimensionManager.addDimension(new BossDimension(2, 'Alien Battle', new AlienBoss(300, 50), 5));
+        dimensionManager.addDimension(new BossDimension(3, 'Mini Dragon', new MiniDragonBoss(300, 50), 4));
+        dimensionManager.addDimension(new BossDimension(4, 'FINAL: Dragon Boss', new DragonBoss(300, 50), 10));
+
+        // Start first dimension
+        let currentDimension = dimensionManager.getCurrentDimension();
+        currentDimension.onEnter(engine.state);
+
+        // Player projectiles
+        let playerProjectiles = [];
+
+        // Shooting - FAST and ACTION-PACKED!
+        let shootCooldown = 0;
+        const SHOOT_RATE = 5; // Frames between shots - RAPID FIRE!
 
         // Keyboard input
         const keys = {};
@@ -74,7 +110,15 @@
 
             if (e.key === ' ') {
                 e.preventDefault();
-                // TODO: Fire weapon
+            }
+
+            // Switch weapons with number keys
+            if (e.key >= '1' && e.key <= '4') {
+                const index = parseInt(e.key) - 1;
+                if (index < player.inventory.length) {
+                    currentWeaponIndex = index;
+                    player.weapon = player.inventory[currentWeaponIndex];
+                }
             }
         });
 
@@ -96,7 +140,7 @@
         // Game loop
         let lastTime = 0;
         function gameLoop(currentTime) {
-            const deltaTime = (currentTime - lastTime) / 16.67; // Normalize to 60fps
+            const deltaTime = Math.min((currentTime - lastTime) / 16.67, 2); // Normalize to 60fps, cap at 2x
             lastTime = currentTime;
 
             // Handle player input
@@ -107,6 +151,14 @@
             if (keys['ArrowDown']) vy = player.speed;
             player.setVelocity(vx, vy);
 
+            // RAPID FIRE SHOOTING!
+            if (keys[' '] && shootCooldown <= 0 && player.weapon) {
+                const newProjectiles = player.weapon.fire(player, engine.state.entities);
+                playerProjectiles.push(...newProjectiles);
+                shootCooldown = SHOOT_RATE;
+            }
+            if (shootCooldown > 0) shootCooldown -= deltaTime;
+
             // Constrain player to canvas
             if (player.x < 0) player.x = 0;
             if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
@@ -115,6 +167,58 @@
 
             // Update engine
             engine.update(deltaTime);
+
+            // Update current dimension
+            currentDimension.update(deltaTime, engine.state);
+
+            // Update player projectiles
+            playerProjectiles = playerProjectiles.filter(p => {
+                p.update(deltaTime);
+                return p.active;
+            });
+
+            // Collision detection - player projectiles vs boss
+            if (currentDimension.type === 'boss' && currentDimension.boss && !currentDimension.boss.defeated) {
+                playerProjectiles.forEach(proj => {
+                    if (proj.active && proj.collidesWith(currentDimension.boss)) {
+                        currentDimension.boss.takeDamage(proj.damage);
+                        proj.destroy();
+                        engine.state.score += 10;
+                    }
+                });
+            }
+
+            // Collision detection - enemy projectiles vs player
+            const enemyProjectiles = currentDimension.getEnemyProjectiles ? currentDimension.getEnemyProjectiles() : [];
+            enemyProjectiles.forEach(proj => {
+                if (proj.active && proj.collidesWith(player)) {
+                    player.removePowerup();
+                    proj.destroy();
+                }
+            });
+
+            // Collision detection - power-ups
+            const powerups = currentDimension.getPowerUps ? currentDimension.getPowerUps() : [];
+            powerups.forEach(powerup => {
+                if (powerup.active && powerup.collidesWith(player)) {
+                    player.addPowerup();
+                    powerup.collect();
+                    if (currentDimension.collectPowerup) {
+                        currentDimension.collectPowerup();
+                    }
+                    engine.state.score += 50;
+                }
+            });
+
+            // Check for dimension completion
+            if (currentDimension.completed && dimensionManager.canAdvance()) {
+                dimensionManager.nextDimension();
+                currentDimension = dimensionManager.getCurrentDimension();
+                if (currentDimension) {
+                    currentDimension.onEnter(engine.state);
+                    playerProjectiles = []; // Clear projectiles
+                }
+            }
 
             // Update stars
             stars.forEach(star => {
@@ -125,7 +229,7 @@
                 }
             });
 
-            // Render
+            // === RENDER ===
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -135,14 +239,30 @@
                 ctx.fillRect(star.x, star.y, star.size, star.size);
             });
 
-            // Draw entities
-            engine.state.entities.forEach(entity => {
-                entity.render(ctx);
-            });
+            // Render current dimension
+            if (currentDimension) {
+                currentDimension.render(ctx);
+            }
+
+            // Draw player projectiles
+            playerProjectiles.forEach(p => p.render(ctx));
+
+            // Draw player
+            player.render(ctx);
+
+            // Draw weapon indicator
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Courier New';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Weapon: ${player.weapon ? player.weapon.name : 'None'}`, 10, 30);
+            ctx.font = '12px Courier New';
+            ctx.fillText('(Press 1-4 to switch)', 10, 50);
 
             // Update UI
+            document.getElementById('dimension').textContent = currentDimension ? currentDimension.number : '?';
             document.getElementById('powerups').textContent = player.powerups;
             document.getElementById('score').textContent = engine.state.score;
+            document.getElementById('message').textContent = currentDimension ? currentDimension.name : 'Loading...';
 
             requestAnimationFrame(gameLoop);
         }
