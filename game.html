@@ -50,7 +50,7 @@
         <div>Dimension: <span id="dimension">1</span> | Power-Ups: <span id="powerups">0</span> | Score: <span id="score">0</span></div>
     </div>
     <div class="controls">
-        <strong>Controls:</strong> Arrow Keys = Move | SPACEBAR = Shoot Magic
+        <strong>Controls:</strong> Arrow Keys = Move | SPACEBAR = Shoot (hold for rapid fire!) | 1-4 = Switch Weapons
     </div>
 
     <script type="module">
@@ -100,6 +100,7 @@
         // Game state
         let gameWon = false;
         let gameOver = false;
+        let gameStarted = false;
 
         // Player projectiles
         let playerProjectiles = [];
@@ -118,6 +119,11 @@
 
             if (e.key === ' ') {
                 e.preventDefault();
+
+                // Start game with spacebar
+                if (!gameStarted) {
+                    gameStarted = true;
+                }
             }
 
             // Switch weapons with number keys
@@ -150,6 +156,42 @@
         function gameLoop(currentTime) {
             const deltaTime = Math.min((currentTime - lastTime) / 16.67, 2); // Normalize to 60fps, cap at 2x
             lastTime = currentTime;
+
+            // Title screen
+            if (!gameStarted) {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw stars
+                stars.forEach(star => {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(star.x, star.y, star.size, star.size);
+                });
+
+                // Title
+                ctx.fillStyle = '#00ff00';
+                ctx.font = 'bold 56px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText("EZRA'S", 400, 180);
+                ctx.fillText("SPACE ADVENTURE", 400, 250);
+
+                // Robot preview
+                player.x = 385;
+                player.y = 300;
+                player.render(ctx);
+
+                // Instructions
+                ctx.fillStyle = '#ffff00';
+                ctx.font = '28px Courier New';
+                ctx.fillText('Press SPACEBAR to Start!', 400, 450);
+
+                ctx.fillStyle = '#fff';
+                ctx.font = '18px Courier New';
+                ctx.fillText('Arrow Keys = Move | Space = Shoot | 1-4 = Switch Weapons', 400, 520);
+
+                requestAnimationFrame(gameLoop);
+                return;
+            }
 
             // Handle player input
             let vx = 0, vy = 0;
