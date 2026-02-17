@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ezra's Space Adventure!</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+        }
+        #gameCanvas {
+            border: 3px solid #00ff00;
+            background: #000;
+            box-shadow: 0 0 20px #00ff00;
+        }
+        .info {
+            margin-top: 20px;
+            font-size: 18px;
+            text-align: center;
+        }
+        .controls {
+            margin-top: 10px;
+            padding: 15px;
+            background: #111;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+        }
+        .title {
+            font-size: 32px;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="title">🤖 EZRA'S SPACE ADVENTURE 🚀</div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div class="info">
+        <div style="font-size: 24px; color: #00ff00; margin-bottom: 10px;"><span id="message">Collect 3 power-ups to summon the alien!</span></div>
+        <div>Power-Ups: <span id="powerups">0</span> | Score: <span id="score">0</span></div>
+    </div>
+    <div class="controls">
+        <strong>Controls:</strong> Arrow Keys = Move | SPACEBAR = Shoot Magic
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game state
+        const game = {
+            robot: {
+                x: 400,
+                y: 500,
+                width: 30,
+                height: 30,
+                speed: 5,
+                color: '#00aaff',
+                powerups: 0
+            },
+            bullets: [],
+            enemyBullets: [],
+            powerups: [],
+            stars: [],
+            keys: {},
+            score: 0,
+            boss: null,
+            phase: 'collect', // collect, alien, dragon, victory
+            message: 'Collect 3 power-ups to summon the alien!'
+        };
+
+        // Create starfield background
+        for (let i = 0; i < 100; i++) {
+            game.stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2,
+                speed: Math.random() * 2 + 1
+            });
+        }
+
+        // Spawn power-ups randomly
+        function spawnPowerup() {
+            game.powerups.push({
+                x: Math.random() * (canvas.width - 20),
+                y: -20,
+                width: 20,
+                height: 20,
+                speed: 2,
+                color: '#ffff00'
+            });
+        }
+
+        // Initial power-ups (only spawn during collect phase)
+        setInterval(() => {
+            if (game.phase === 'collect') {
+                spawnPowerup();
+            }
+        }, 3000);
+        spawnPowerup();
+
+        // Spawn boss
+        function spawnBoss(type) {
+            if (type === 'alien') {
+                game.boss = {
+                    type: 'alien',
+                    x: canvas.width / 2 - 40,
+                    y: 50,
+                    width: 80,
+                    height: 60,
+                    health: 10,
+                    maxHealth: 10,
+                    speed: 3,
+                    direction: 1,
+                    color: '#00ff00',
+                    shootTimer: 0
+                };
+                game.phase = 'alien';
+                game.message = 'ALIEN BOSS! Shoot it to defeat!';
+            } else if (type === 'dragon') {
+                game.boss = {
+                    type: 'dragon',
+                    x: canvas.width / 2 - 60,
+                    y: 30,
+                    width: 120,
+                    height: 100,
+                    health: 25,
+                    maxHealth: 25,
+                    speed: 2,
+                    direction: 1,
+                    color: '#ff0000',
+                    shootTimer: 0
+                };
+                game.phase = 'dragon';
+                game.message = 'DRAGON BOSS! Watch out!';
+            }
+        }
+
+        // Keyboard controls
+        window.addEventListener('keydown', (e) => {
+            game.keys[e.key] = true;
+
+            // Shoot bullet on spacebar
+            if (e.key === ' ') {
+                e.preventDefault();
+                game.bullets.push({
+                    x: game.robot.x + game.robot.width / 2 - 3,
+                    y: game.robot.y,
+                    width: 6,
+                    height: 15,
+                    speed: 8,
+                    color: '#ff00ff'
+                });
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            game.keys[e.key] = false;
+        });
+
+        // Update game
+        function update() {
+            // Move robot
+            if (game.keys['ArrowLeft'] && game.robot.x > 0) {
+                game.robot.x -= game.robot.speed;
+            }
+            if (game.keys['ArrowRight'] && game.robot.x < canvas.width - game.robot.width) {
+                game.robot.x += game.robot.speed;
+            }
+            if (game.keys['ArrowUp'] && game.robot.y > 0) {
+                game.robot.y -= game.robot.speed;
+            }
+            if (game.keys['ArrowDown'] && game.robot.y < canvas.height - game.robot.height) {
+                game.robot.y += game.robot.speed;
+            }
+
+            // Check if should spawn boss
+            if (game.phase === 'collect' && game.robot.powerups >= 3) {
+                spawnBoss('alien');
+            }
+
+            // Update boss
+            if (game.boss) {
+                // Move boss side to side
+                game.boss.x += game.boss.speed * game.boss.direction;
+                if (game.boss.x <= 0 || game.boss.x >= canvas.width - game.boss.width) {
+                    game.boss.direction *= -1;
+                }
+
+                // Boss shooting
+                game.boss.shootTimer++;
+                const shootInterval = game.boss.type === 'dragon' ? 60 : 90;
+                if (game.boss.shootTimer >= shootInterval) {
+                    game.boss.shootTimer = 0;
+                    // Shoot at robot
+                    game.enemyBullets.push({
+                        x: game.boss.x + game.boss.width / 2 - 4,
+                        y: game.boss.y + game.boss.height,
+                        width: 8,
+                        height: 12,
+                        speed: 4,
+                        color: game.boss.color
+                    });
+                }
+            }
+
+            // Move stars (parallax effect)
+            game.stars.forEach(star => {
+                star.y += star.speed;
+                if (star.y > canvas.height) {
+                    star.y = 0;
+                    star.x = Math.random() * canvas.width;
+                }
+            });
+
+            // Move player bullets
+            game.bullets = game.bullets.filter(bullet => {
+                bullet.y -= bullet.speed;
+
+                // Check if bullet hits boss
+                if (game.boss &&
+                    bullet.x < game.boss.x + game.boss.width &&
+                    bullet.x + bullet.width > game.boss.x &&
+                    bullet.y < game.boss.y + game.boss.height &&
+                    bullet.y + bullet.height > game.boss.y) {
+                    game.boss.health--;
+                    game.score += 5;
+                    updateUI();
+
+                    // Boss defeated
+                    if (game.boss.health <= 0) {
+                        game.score += 100;
+                        if (game.boss.type === 'alien') {
+                            game.message = 'Alien defeated! Dragon incoming...';
+                            setTimeout(() => spawnBoss('dragon'), 2000);
+                        } else if (game.boss.type === 'dragon') {
+                            game.message = 'VICTORY! You defeated the dragon!';
+                            game.phase = 'victory';
+                        }
+                        game.boss = null;
+                        updateUI();
+                    }
+                    return false; // Remove bullet
+                }
+
+                return bullet.y > 0;
+            });
+
+            // Move enemy bullets
+            game.enemyBullets = game.enemyBullets.filter(bullet => {
+                bullet.y += bullet.speed;
+
+                // Check if hits robot
+                if (game.robot.x < bullet.x + bullet.width &&
+                    game.robot.x + game.robot.width > bullet.x &&
+                    game.robot.y < bullet.y + bullet.height &&
+                    game.robot.y + game.robot.height > bullet.y) {
+                    // Lose a power-up!
+                    if (game.robot.powerups > 0) {
+                        game.robot.powerups--;
+                        game.message = 'Hit! Lost a power-up!';
+                        updateUI();
+                    }
+                    return false;
+                }
+
+                return bullet.y < canvas.height;
+            });
+
+            // Move power-ups
+            game.powerups = game.powerups.filter(powerup => {
+                powerup.y += powerup.speed;
+
+                // Check collision with robot
+                if (game.robot.x < powerup.x + powerup.width &&
+                    game.robot.x + game.robot.width > powerup.x &&
+                    game.robot.y < powerup.y + powerup.height &&
+                    game.robot.y + game.robot.height > powerup.y) {
+                    game.robot.powerups++;
+                    game.score += 10;
+                    updateUI();
+                    return false; // Remove power-up
+                }
+
+                return powerup.y < canvas.height;
+            });
+        }
+
+        // Draw game
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw stars
+            game.stars.forEach(star => {
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(star.x, star.y, star.size, star.size);
+            });
+
+            // Draw robot (magic robot!)
+            ctx.fillStyle = game.robot.color;
+            ctx.fillRect(game.robot.x, game.robot.y, game.robot.width, game.robot.height);
+
+            // Robot details (make it look more robot-like)
+            ctx.fillStyle = '#00ffff';
+            ctx.fillRect(game.robot.x + 5, game.robot.y + 5, 8, 8); // "eye"
+            ctx.fillRect(game.robot.x + 17, game.robot.y + 5, 8, 8); // "eye"
+
+            // Magic antenna
+            ctx.strokeStyle = '#ff00ff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(game.robot.x + 15, game.robot.y);
+            ctx.lineTo(game.robot.x + 15, game.robot.y - 10);
+            ctx.stroke();
+            ctx.fillStyle = '#ff00ff';
+            ctx.beginPath();
+            ctx.arc(game.robot.x + 15, game.robot.y - 10, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw bullets
+            game.bullets.forEach(bullet => {
+                ctx.fillStyle = bullet.color;
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+
+                // Magic sparkle effect
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(bullet.x + 2, bullet.y + bullet.height / 2, 2, 2);
+            });
+
+            // Draw power-ups
+            game.powerups.forEach(powerup => {
+                // Rotating star effect
+                const time = Date.now() * 0.005;
+                ctx.save();
+                ctx.translate(powerup.x + powerup.width / 2, powerup.y + powerup.height / 2);
+                ctx.rotate(time);
+                ctx.fillStyle = powerup.color;
+                ctx.fillRect(-powerup.width / 2, -powerup.height / 2, powerup.width, powerup.height);
+
+                // Glow effect
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-powerup.width / 2 - 2, -powerup.height / 2 - 2, powerup.width + 4, powerup.height + 4);
+                ctx.restore();
+            });
+
+            // Draw enemy bullets
+            game.enemyBullets.forEach(bullet => {
+                ctx.fillStyle = bullet.color;
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+
+                // Evil glow
+                ctx.strokeStyle = bullet.color;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(bullet.x - 2, bullet.y - 2, bullet.width + 4, bullet.height + 4);
+            });
+
+            // Draw boss
+            if (game.boss) {
+                ctx.fillStyle = game.boss.color;
+
+                if (game.boss.type === 'alien') {
+                    // Alien body
+                    ctx.fillRect(game.boss.x, game.boss.y, game.boss.width, game.boss.height);
+
+                    // Alien eyes
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(game.boss.x + 15, game.boss.y + 15, 15, 15);
+                    ctx.fillRect(game.boss.x + 50, game.boss.y + 15, 15, 15);
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(game.boss.x + 20, game.boss.y + 20, 5, 5);
+                    ctx.fillRect(game.boss.x + 55, game.boss.y + 20, 5, 5);
+
+                    // Alien antenna
+                    ctx.strokeStyle = game.boss.color;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(game.boss.x + 20, game.boss.y);
+                    ctx.lineTo(game.boss.x + 20, game.boss.y - 15);
+                    ctx.moveTo(game.boss.x + 60, game.boss.y);
+                    ctx.lineTo(game.boss.x + 60, game.boss.y - 15);
+                    ctx.stroke();
+                } else if (game.boss.type === 'dragon') {
+                    // Dragon body
+                    ctx.fillRect(game.boss.x + 20, game.boss.y + 20, game.boss.width - 40, game.boss.height - 20);
+
+                    // Dragon head
+                    ctx.fillRect(game.boss.x + 40, game.boss.y, 40, 40);
+
+                    // Dragon eyes
+                    ctx.fillStyle = '#ffff00';
+                    ctx.fillRect(game.boss.x + 45, game.boss.y + 10, 10, 10);
+                    ctx.fillRect(game.boss.x + 65, game.boss.y + 10, 10, 10);
+
+                    // Dragon wings
+                    ctx.fillStyle = game.boss.color;
+                    ctx.beginPath();
+                    ctx.moveTo(game.boss.x, game.boss.y + 40);
+                    ctx.lineTo(game.boss.x + 20, game.boss.y + 20);
+                    ctx.lineTo(game.boss.x + 20, game.boss.y + 60);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(game.boss.x + game.boss.width, game.boss.y + 40);
+                    ctx.lineTo(game.boss.x + game.boss.width - 20, game.boss.y + 20);
+                    ctx.lineTo(game.boss.x + game.boss.width - 20, game.boss.y + 60);
+                    ctx.fill();
+                }
+
+                // Boss health bar
+                const barWidth = 200;
+                const barHeight = 20;
+                const barX = (canvas.width - barWidth) / 2;
+                const barY = 10;
+
+                // Background
+                ctx.fillStyle = '#333';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+
+                // Health
+                const healthPercent = game.boss.health / game.boss.maxHealth;
+                ctx.fillStyle = healthPercent > 0.5 ? '#0f0' : healthPercent > 0.25 ? '#ff0' : '#f00';
+                ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+
+                // Border
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+                // Boss name
+                ctx.fillStyle = '#fff';
+                ctx.font = '16px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText(game.boss.type.toUpperCase(), canvas.width / 2, barY + barHeight + 20);
+            }
+
+            // Draw message
+            ctx.fillStyle = '#fff';
+            ctx.font = '20px Courier New';
+            ctx.textAlign = 'center';
+            ctx.fillText(game.message, canvas.width / 2, canvas.height - 20);
+        }
+
+        // Update UI
+        function updateUI() {
+            document.getElementById('powerups').textContent = game.robot.powerups;
+            document.getElementById('score').textContent = game.score;
+            document.getElementById('message').textContent = game.message;
+        }
+
+        // Game loop
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start game
+        updateUI();
+        gameLoop();
+    </script>
+</body>
+</html>
