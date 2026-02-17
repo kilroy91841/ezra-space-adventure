@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Entity Tests</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        .pass { color: #0f0; }
+        .fail { color: #f00; }
+    </style>
+</head>
+<body>
+    <h1>Entity Tests</h1>
+    <div id="results"></div>
+
+    <script type="module">
+        import { Entity } from '../../src/entities/Entity.js';
+
+        const results = [];
+
+        function test(name, fn) {
+            try {
+                fn();
+                results.push({ name, status: 'pass' });
+            } catch (error) {
+                results.push({ name, status: 'fail', error: error.message });
+            }
+        }
+
+        function assert(condition, message) {
+            if (!condition) throw new Error(message || 'Assertion failed');
+        }
+
+        test('Entity initializes with position and size', () => {
+            const entity = new Entity(100, 200, 30, 40);
+            assert(entity.x === 100, 'X should be 100');
+            assert(entity.y === 200, 'Y should be 200');
+            assert(entity.width === 30, 'Width should be 30');
+            assert(entity.height === 40, 'Height should be 40');
+        });
+
+        test('Entity detects collision with another entity', () => {
+            const e1 = new Entity(0, 0, 50, 50);
+            const e2 = new Entity(25, 25, 50, 50);
+            const e3 = new Entity(100, 100, 50, 50);
+
+            assert(e1.collidesWith(e2), 'Overlapping entities should collide');
+            assert(!e1.collidesWith(e3), 'Non-overlapping entities should not collide');
+        });
+
+        test('Entity has active state', () => {
+            const entity = new Entity(0, 0, 10, 10);
+            assert(entity.active === true, 'Entity should be active by default');
+            entity.destroy();
+            assert(entity.active === false, 'Entity should be inactive after destroy');
+        });
+
+        // Render results
+        const resultsDiv = document.getElementById('results');
+        results.forEach(r => {
+            const div = document.createElement('div');
+            div.className = r.status;
+            div.textContent = `${r.status.toUpperCase()}: ${r.name}`;
+            if (r.error) div.textContent += ` - ${r.error}`;
+            resultsDiv.appendChild(div);
+        });
+    </script>
+</body>
+</html>
