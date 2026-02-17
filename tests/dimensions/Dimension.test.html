@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dimension Tests</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        .pass { color: #0f0; }
+        .fail { color: #f00; }
+    </style>
+</head>
+<body>
+    <h1>Dimension Tests</h1>
+    <div id="results"></div>
+
+    <script type="module">
+        import { Dimension, DimensionType } from '../../src/dimensions/Dimension.js';
+        import { DimensionManager } from '../../src/dimensions/DimensionManager.js';
+
+        const results = [];
+
+        function test(name, fn) {
+            try {
+                fn();
+                results.push({ name, status: 'pass' });
+            } catch (error) {
+                results.push({ name, status: 'fail', error: error.message });
+            }
+        }
+
+        function assert(condition, message) {
+            if (!condition) throw new Error(message || 'Assertion failed');
+        }
+
+        test('Dimension has number and type', () => {
+            const dim = new Dimension(1, DimensionType.PUZZLE, 'Memory Puzzle');
+            assert(dim.number === 1);
+            assert(dim.type === DimensionType.PUZZLE);
+            assert(dim.name === 'Memory Puzzle');
+        });
+
+        test('Dimension tracks completion', () => {
+            const dim = new Dimension(1, DimensionType.PUZZLE, 'Test');
+            assert(dim.completed === false);
+            dim.complete();
+            assert(dim.completed === true);
+        });
+
+        test('DimensionManager tracks current dimension', () => {
+            const manager = new DimensionManager();
+            manager.addDimension(new Dimension(1, DimensionType.PUZZLE, 'D1'));
+            manager.addDimension(new Dimension(2, DimensionType.BOSS, 'D2'));
+
+            assert(manager.getCurrentDimension().number === 1);
+        });
+
+        test('DimensionManager can advance to next dimension', () => {
+            const manager = new DimensionManager();
+            manager.addDimension(new Dimension(1, DimensionType.PUZZLE, 'D1'));
+            manager.addDimension(new Dimension(2, DimensionType.BOSS, 'D2'));
+
+            manager.nextDimension();
+            assert(manager.getCurrentDimension().number === 2);
+        });
+
+        // Render results
+        const resultsDiv = document.getElementById('results');
+        results.forEach(r => {
+            const div = document.createElement('div');
+            div.className = r.status;
+            div.textContent = `${r.status.toUpperCase()}: ${r.name}`;
+            if (r.error) div.textContent += ` - ${r.error}`;
+            resultsDiv.appendChild(div);
+        });
+    </script>
+</body>
+</html>
