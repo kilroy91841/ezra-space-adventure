@@ -1,12 +1,14 @@
 import { Dimension, DimensionType } from './Dimension.js';
 import { PowerUp } from '../entities/PowerUp.js';
 import { DamageTrap } from '../entities/DamageTrap.js';
+import { ChasingEnemy } from '../entities/ChasingEnemy.js';
 
 export class CollectionDimension extends Dimension {
     constructor(number, name) {
         super(number, DimensionType.PUZZLE, name);
         this.powerups = [];
         this.traps = [];
+        this.chasingEnemy = null;
         this.collectedCount = 0;
         this.totalPowerups = 0;
         this.timeInDimension = 0;
@@ -17,6 +19,9 @@ export class CollectionDimension extends Dimension {
         this.traps = [];
         this.collectedCount = 0;
         this.timeInDimension = 0;
+
+        // Create chasing alien!
+        this.chasingEnemy = new ChasingEnemy(400, 50);
 
         // Create power-ups in REALLY hidden places!
         // Far corners (very hidden)
@@ -42,7 +47,7 @@ export class CollectionDimension extends Dimension {
         this.totalPowerups = this.powerups.length;
     }
 
-    update(deltaTime, gameState) {
+    update(deltaTime, gameState, player) {
         this.timeInDimension += deltaTime;
 
         // Update power-ups
@@ -50,6 +55,11 @@ export class CollectionDimension extends Dimension {
 
         // Update traps
         this.traps.forEach(t => t.update(deltaTime));
+
+        // Update chasing alien!
+        if (this.chasingEnemy && player) {
+            this.chasingEnemy.update(deltaTime, player);
+        }
 
         // Remove collected power-ups and triggered traps
         this.powerups = this.powerups.filter(p => p.active);
@@ -65,6 +75,11 @@ export class CollectionDimension extends Dimension {
     }
 
     render(ctx) {
+        // Render chasing alien
+        if (this.chasingEnemy) {
+            this.chasingEnemy.render(ctx);
+        }
+
         // Render all power-ups
         this.powerups.forEach(p => p.render(ctx));
 
@@ -102,5 +117,9 @@ export class CollectionDimension extends Dimension {
 
     collectPowerup() {
         this.collectedCount++;
+    }
+
+    getChasingEnemy() {
+        return this.chasingEnemy;
     }
 }

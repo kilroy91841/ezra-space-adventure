@@ -27,7 +27,7 @@ export class MathPuzzleDimension extends Dimension {
 
     generateProblems(gameState) {
         const problems = [];
-        const powerups = gameState.player ? gameState.player.powerups || 0 : 0;
+        const powerups = Math.floor(Math.random() * 10 + 5); // Random power-ups for problems
 
         // Problem 1: Addition with story
         problems.push({

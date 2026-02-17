@@ -50,7 +50,7 @@
         <div>Dimension: <span id="dimension">1</span> | Power-Ups: <span id="powerups">0</span> | Score: <span id="score">0</span></div>
     </div>
     <div class="controls">
-        <strong>Controls:</strong> Arrow Keys = Move | SPACEBAR = Shoot (hold for rapid fire!) | 1-4 = Switch Weapons
+        <strong>Controls:</strong> Arrow Keys OR Mouse = Move | M = Toggle Mouse/Keyboard | SPACEBAR = Shoot | 1-4 = Switch Weapons
     </div>
 
     <script type="module">
@@ -104,6 +104,10 @@
         let gameOver = false;
         let gameStarted = false;
 
+        // Health system: track hits when you have 0 power-ups
+        let hitsWithZeroPowerups = 0;
+        const MAX_HITS = 5;
+
         // Player projectiles
         let playerProjectiles = [];
 
@@ -114,9 +118,35 @@
         let shootCooldown = 0;
         const SHOOT_RATE = 5; // Frames between shots - RAPID FIRE!
 
+        // Mouse movement option
+        let useMouseMovement = false;
+        let mouseX = 400;
+        let mouseY = 500;
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!useMouseMovement) return;
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+
+        canvas.addEventListener('click', () => {
+            useMouseMovement = true; // Click to enable mouse movement
+        });
+
         // Keyboard input
         const keys = {};
         window.addEventListener('keydown', (e) => {
+            // Press M to toggle mouse movement
+            if (e.key === 'm' || e.key === 'M') {
+                useMouseMovement = !useMouseMovement;
+                return;
+            }
+
+            // Using arrow keys disables mouse movement
+            if (e.key.startsWith('Arrow')) {
+                useMouseMovement = false;
+            }
             keys[e.key] = true;
 
             // Math dimension needs keyboard input
@@ -207,10 +237,25 @@
 
             // Handle player input
             let vx = 0, vy = 0;
-            if (keys['ArrowLeft']) vx = -player.speed;
-            if (keys['ArrowRight']) vx = player.speed;
-            if (keys['ArrowUp']) vy = -player.speed;
-            if (keys['ArrowDown']) vy = player.speed;
+
+            if (useMouseMovement) {
+                // Mouse movement - move towards mouse position
+                const dx = mouseX - player.x;
+                const dy = mouseY - player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > 5) { // Dead zone
+                    vx = (dx / distance) * player.speed;
+                    vy = (dy / distance) * player.speed;
+                }
+            } else {
+                // Keyboard movement
+                if (keys['ArrowLeft']) vx = -player.speed;
+                if (keys['ArrowRight']) vx = player.speed;
+                if (keys['ArrowUp']) vy = -player.speed;
+                if (keys['ArrowDown']) vy = player.speed;
+            }
+
             player.setVelocity(vx, vy);
 
             // RAPID FIRE SHOOTING!
@@ -230,8 +275,8 @@
             // Update engine
             engine.update(deltaTime);
 
-            // Update current dimension
-            currentDimension.update(deltaTime, engine.state);
+            // Update current dimension (pass player for chasing enemy)
+            currentDimension.update(deltaTime, engine.state, player);
 
             // Update player projectiles
             playerProjectiles = playerProjectiles.filter(p => {
@@ -275,8 +320,49 @@
                 if (proj.active && proj.collidesWith(player)) {
                     player.removePowerup();
                     proj.destroy();
+
+                    // Health system: track hits at 0 power-ups
+                    if (player.powerups === 0) {
+                        hitsWithZeroPowerups++;
+                        if (hitsWithZeroPowerups >= MAX_HITS) {
+                            // RESTART LEVEL!
+                            currentDimension.onEnter(engine.state);
+                            hitsWithZeroPowerups = 0;
+                            playerProjectiles = [];
+                        }
+                    } else {
+                        hitsWithZeroPowerups = 0; // Reset if you have power-ups
+                    }
                 }
             });
+
+            // Collision detection - chasing enemy vs player
+            const chasingEnemy = currentDimension.getChasingEnemy ? currentDimension.getChasingEnemy() : null;
+            if (chasingEnemy && chasingEnemy.collidesWith(player)) {
+                player.removePowerup();
+
+                // Health system: track hits at 0 power-ups
+                if (player.powerups === 0) {
+                    hitsWithZeroPowerups++;
+                    if (hitsWithZeroPowerups >= MAX_HITS) {
+                        // RESTART LEVEL!
+                        currentDimension.onEnter(engine.state);
+                        hitsWithZeroPowerups = 0;
+                        playerProjectiles = [];
+                    }
+                } else {
+                    hitsWithZeroPowerups = 0; // Reset if you have power-ups
+                }
+
+                // Push player away
+                const dx = player.x - chasingEnemy.x;
+                const dy = player.y - chasingEnemy.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance > 0) {
+                    player.x += (dx / distance) * 20;
+                    player.y += (dy / distance) * 20;
+                }
+            }
 
             // Collision detection - power-ups
             const powerups = currentDimension.getPowerUps ? currentDimension.getPowerUps() : [];
@@ -365,6 +451,24 @@
             ctx.fillText(`Weapon: ${player.weapon ? player.weapon.name : 'None'}`, 10, 30);
             ctx.font = '12px Courier New';
             ctx.fillText('(Press 1-4 to switch)', 10, 50);
+
+            // Movement mode indicator
+            ctx.fillStyle = useMouseMovement ? '#00ff00' : '#fff';
+            ctx.font = '14px Courier New';
+            ctx.fillText(`Move: ${useMouseMovement ? 'MOUSE' : 'KEYBOARD'}`, 10, 75);
+            ctx.font = '10px Courier New';
+            ctx.fillStyle = '#888';
+            ctx.fillText('(Press M to toggle)', 10, 90);
+
+            // Health indicator (when at 0 power-ups)
+            if (player.powerups === 0 && hitsWithZeroPowerups > 0) {
+                ctx.fillStyle = '#ff0000';
+                ctx.font = 'bold 20px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText(`⚠️ HITS: ${hitsWithZeroPowerups}/${MAX_HITS} ⚠️`, 400, 580);
+                ctx.font = '14px Courier New';
+                ctx.fillText('Get power-ups or restart level!', 400, 595);
+            }
 
             // Victory screen
             if (gameWon) {
