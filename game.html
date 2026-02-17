@@ -62,6 +62,7 @@
         import { AlienBoss } from './src/entities/AlienBoss.js';
         import { MiniDragonBoss, DragonBoss } from './src/entities/DragonBoss.js';
         import { IceShooter, FireShooter, GiantSword, BigBomb } from './src/weapons/EzraWeapons.js';
+        import { createExplosion, createHitEffect, createSparkle } from './src/effects/Particle.js';
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -96,8 +97,15 @@
         let currentDimension = dimensionManager.getCurrentDimension();
         currentDimension.onEnter(engine.state);
 
+        // Game state
+        let gameWon = false;
+        let gameOver = false;
+
         // Player projectiles
         let playerProjectiles = [];
+
+        // Particle effects
+        let particles = [];
 
         // Shooting - FAST and ACTION-PACKED!
         let shootCooldown = 0;
@@ -177,6 +185,12 @@
                 return p.active;
             });
 
+            // Update particles
+            particles = particles.filter(p => {
+                p.update(deltaTime);
+                return p.active;
+            });
+
             // Collision detection - player projectiles vs boss
             if (currentDimension.type === 'boss' && currentDimension.boss && !currentDimension.boss.defeated) {
                 playerProjectiles.forEach(proj => {
@@ -184,6 +198,19 @@
                         currentDimension.boss.takeDamage(proj.damage);
                         proj.destroy();
                         engine.state.score += 10;
+
+                        // Hit effect!
+                        particles.push(...createHitEffect(proj.x + proj.width / 2, proj.y + proj.height / 2, proj.color));
+
+                        // Boss defeated explosion!
+                        if (currentDimension.boss.defeated) {
+                            particles.push(...createExplosion(
+                                currentDimension.boss.x + currentDimension.boss.width / 2,
+                                currentDimension.boss.y + currentDimension.boss.height / 2,
+                                currentDimension.boss.color,
+                                40
+                            ));
+                        }
                     }
                 });
             }
@@ -207,6 +234,9 @@
                         currentDimension.collectPowerup();
                     }
                     engine.state.score += 50;
+
+                    // Sparkle effect!
+                    particles.push(...createSparkle(powerup.x + powerup.width / 2, powerup.y + powerup.height / 2));
                 }
             });
 
@@ -217,7 +247,13 @@
                 if (currentDimension) {
                     currentDimension.onEnter(engine.state);
                     playerProjectiles = []; // Clear projectiles
+                } else {
+                    // No more dimensions - YOU WIN!
+                    gameWon = true;
                 }
+            } else if (currentDimension.completed && !dimensionManager.canAdvance()) {
+                // Final dimension completed!
+                gameWon = true;
             }
 
             // Update stars
@@ -247,6 +283,9 @@
             // Draw player projectiles
             playerProjectiles.forEach(p => p.render(ctx));
 
+            // Draw particles
+            particles.forEach(p => p.render(ctx));
+
             // Draw player
             player.render(ctx);
 
@@ -257,6 +296,29 @@
             ctx.fillText(`Weapon: ${player.weapon ? player.weapon.name : 'None'}`, 10, 30);
             ctx.font = '12px Courier New';
             ctx.fillText('(Press 1-4 to switch)', 10, 50);
+
+            // Victory screen
+            if (gameWon) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#00ff00';
+                ctx.font = 'bold 64px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('YOU WIN!', 400, 250);
+
+                ctx.fillStyle = '#ffff00';
+                ctx.font = '32px Courier New';
+                ctx.fillText('The Dragon is Defeated!', 400, 320);
+
+                ctx.fillStyle = '#fff';
+                ctx.font = '24px Courier New';
+                ctx.fillText(`Final Score: ${engine.state.score}`, 400, 380);
+                ctx.fillText(`Power-Ups: ${player.powerups}`, 400, 420);
+
+                ctx.font = '18px Courier New';
+                ctx.fillText('Press F5 to play again', 400, 470);
+            }
 
             // Update UI
             document.getElementById('dimension').textContent = currentDimension ? currentDimension.number : '?';
