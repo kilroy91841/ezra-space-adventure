@@ -1,0 +1,11 @@
+{
+  "name": "ezras-space-adventure",
+  "version": "1.0.0",
+  "description": "A space adventure game for Ezra",
+  "main": "game.html",
+  "scripts": {
+    "test": "open tests/runner.html"
+  },
+  "author": "Ezra & Dad",
+  "license": "MIT"
+}
