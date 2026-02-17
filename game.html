@@ -59,6 +59,7 @@
         import { DimensionManager } from './src/dimensions/DimensionManager.js';
         import { CollectionDimension } from './src/dimensions/CollectionDimension.js';
         import { BossDimension } from './src/dimensions/BossDimension.js';
+        import { MathPuzzleDimension } from './src/dimensions/MathPuzzleDimension.js';
         import { AlienBoss } from './src/entities/AlienBoss.js';
         import { MiniDragonBoss, DragonBoss } from './src/entities/DragonBoss.js';
         import { IceShooter, FireShooter, GiantSword, BigBomb } from './src/weapons/EzraWeapons.js';
@@ -90,8 +91,9 @@
         // Add dimensions
         dimensionManager.addDimension(new CollectionDimension(1, 'Power-Up Hunt'));
         dimensionManager.addDimension(new BossDimension(2, 'Alien Battle', new AlienBoss(300, 50), 5));
-        dimensionManager.addDimension(new BossDimension(3, 'Mini Dragon', new MiniDragonBoss(300, 50), 4));
-        dimensionManager.addDimension(new BossDimension(4, 'FINAL: Dragon Boss', new DragonBoss(300, 50), 10));
+        dimensionManager.addDimension(new MathPuzzleDimension(3, 'Math Puzzle Challenge'));
+        dimensionManager.addDimension(new BossDimension(4, 'Mini Dragon', new MiniDragonBoss(300, 50), 4));
+        dimensionManager.addDimension(new BossDimension(5, 'FINAL: Dragon Boss', new DragonBoss(300, 50), 10));
 
         // Start first dimension
         let currentDimension = dimensionManager.getCurrentDimension();
@@ -117,6 +119,14 @@
         window.addEventListener('keydown', (e) => {
             keys[e.key] = true;
 
+            // Math dimension needs keyboard input
+            if (currentDimension && currentDimension.handleKeyPress) {
+                currentDimension.handleKeyPress(e.key);
+                if (e.key >= '0' && e.key <= '9' || e.key === 'Backspace' || e.key === 'Enter') {
+                    e.preventDefault();
+                }
+            }
+
             if (e.key === ' ') {
                 e.preventDefault();
 
@@ -126,12 +136,14 @@
                 }
             }
 
-            // Switch weapons with number keys
-            if (e.key >= '1' && e.key <= '4') {
-                const index = parseInt(e.key) - 1;
-                if (index < player.inventory.length) {
-                    currentWeaponIndex = index;
-                    player.weapon = player.inventory[currentWeaponIndex];
+            // Switch weapons with number keys (only if not in math dimension)
+            if (!currentDimension || !currentDimension.handleKeyPress) {
+                if (e.key >= '1' && e.key <= '4') {
+                    const index = parseInt(e.key) - 1;
+                    if (index < player.inventory.length) {
+                        currentWeaponIndex = index;
+                        player.weapon = player.inventory[currentWeaponIndex];
+                    }
                 }
             }
         });
@@ -279,6 +291,21 @@
 
                     // Sparkle effect!
                     particles.push(...createSparkle(powerup.x + powerup.width / 2, powerup.y + powerup.height / 2));
+                }
+            });
+
+            // Collision detection - damage traps
+            const traps = currentDimension.getTraps ? currentDimension.getTraps() : [];
+            traps.forEach(trap => {
+                if (trap.active && trap.collidesWith(player)) {
+                    // OUCH! Lose power-ups!
+                    player.removePowerup();
+                    player.removePowerup();
+                    player.removePowerup(); // Lose 3 power-ups!
+                    trap.trigger();
+
+                    // Red explosion effect!
+                    particles.push(...createHitEffect(trap.x + trap.width / 2, trap.y + trap.height / 2, '#ff0000'));
                 }
             });
 

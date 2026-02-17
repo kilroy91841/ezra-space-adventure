@@ -74,7 +74,8 @@ export class BossDimension extends Dimension {
             this.bossDefeatedTime += deltaTime;
 
             // Complete dimension after showing victory for a bit
-            if (this.bossDefeatedTime > 90 && !this.completed) {
+            // Give more time to collect power-ups! (300 frames = 5 seconds)
+            if (this.bossDefeatedTime > 300 && !this.completed) {
                 this.complete();
             }
         }
