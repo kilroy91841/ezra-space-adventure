@@ -30,13 +30,12 @@ export class MathPuzzleDimension extends Dimension {
         const powerups = Math.floor(Math.random() * 10 + 5); // Random power-ups for problems
 
         // Problem 1: Addition with story
+        const p1_a = Math.floor(Math.random() * 20 + 10);
+        const p1_b = Math.floor(Math.random() * 30 + 20);
         problems.push({
-            question: "You collected " + Math.floor(Math.random() * 20 + 10) + " power-ups in Dimension 1 and " + Math.floor(Math.random() * 30 + 20) + " in Dimension 2. How many total?",
-            answer: null // Will calculate
+            question: `You collected ${p1_a} power-ups in the first dimension and ${p1_b} in the second dimension. How many total?`,
+            answer: p1_a + p1_b
         });
-        const p1_a = parseInt(problems[0].question.match(/\d+/g)[0]);
-        const p1_b = parseInt(problems[0].question.match(/\d+/g)[1]);
-        problems[0].answer = p1_a + p1_b;
 
         // Problem 2: Multiplication
         const shots = Math.floor(Math.random() * 10 + 5);
@@ -50,7 +49,7 @@ export class MathPuzzleDimension extends Dimension {
         const needed = Math.floor(Math.random() * 50 + 100);
         const have = Math.floor(Math.random() * 40 + 30);
         problems.push({
-            question: `You need ${needed} power-ups to defeat the dragon. You have ${have}. How many more do you need?`,
+            question: `To defeat the dragon you need ${needed} power-ups total. You have ${have} power-ups. How many more do you need?`,
             answer: needed - have
         });
 
