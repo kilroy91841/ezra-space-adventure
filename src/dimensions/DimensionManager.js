@@ -9,18 +9,19 @@ export class DimensionManager {
     }
 
     getCurrentDimension() {
+        if (this.dimensions.length === 0) return null;
         return this.dimensions[this.currentIndex];
     }
 
-    nextDimension() {
+    nextDimension(gameState) {
         if (this.currentIndex < this.dimensions.length - 1) {
             const current = this.getCurrentDimension();
-            if (current) current.onExit();
+            if (current) current.onExit(gameState);
 
             this.currentIndex++;
 
             const next = this.getCurrentDimension();
-            if (next) next.onEnter();
+            if (next) next.onEnter(gameState);
         }
     }
 

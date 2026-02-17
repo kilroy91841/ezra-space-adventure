@@ -62,6 +62,42 @@
             assert(manager.getCurrentDimension().number === 2);
         });
 
+        test('DimensionManager calls onExit and onEnter lifecycle hooks', () => {
+            const manager = new DimensionManager();
+            let exitCalled = false;
+            let enterCalled = false;
+            let exitGameState = null;
+            let enterGameState = null;
+
+            const dim1 = new Dimension(1, DimensionType.PUZZLE, 'D1');
+            dim1.onExit = (gameState) => {
+                exitCalled = true;
+                exitGameState = gameState;
+            };
+
+            const dim2 = new Dimension(2, DimensionType.BOSS, 'D2');
+            dim2.onEnter = (gameState) => {
+                enterCalled = true;
+                enterGameState = gameState;
+            };
+
+            manager.addDimension(dim1);
+            manager.addDimension(dim2);
+
+            const testGameState = { player: 'test' };
+            manager.nextDimension(testGameState);
+
+            assert(exitCalled === true, 'onExit should be called');
+            assert(enterCalled === true, 'onEnter should be called');
+            assert(exitGameState === testGameState, 'gameState should be passed to onExit');
+            assert(enterGameState === testGameState, 'gameState should be passed to onEnter');
+        });
+
+        test('DimensionManager returns null when no dimensions exist', () => {
+            const manager = new DimensionManager();
+            assert(manager.getCurrentDimension() === null);
+        });
+
         // Render results
         const resultsDiv = document.getElementById('results');
         results.forEach(r => {
