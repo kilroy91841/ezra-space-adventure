@@ -59,8 +59,8 @@ export class BossDimension extends Dimension {
             return p.active;
         });
 
-        // Check if boss defeated
-        if (this.boss.defeated && !this.showingVictory) {
+        // Check if boss defeated OR became ally (for Alien Boss)
+        if ((this.boss.defeated || this.boss.isAlly) && !this.showingVictory) {
             this.showingVictory = true;
             this.bossDefeatedTime = 0;
 
@@ -92,10 +92,13 @@ export class BossDimension extends Dimension {
     }
 
     render(ctx) {
-        // Render boss
-        if (!this.boss.defeated) {
+        // Render boss (including allies)
+        if (!this.boss.defeated || this.boss.isAlly) {
             this.boss.render(ctx);
-            this.boss.renderHealthBar(ctx, CANVAS_WIDTH);
+            // Only show health bar if not showing victory
+            if (!this.showingVictory) {
+                this.boss.renderHealthBar(ctx, CANVAS_WIDTH);
+            }
         }
 
         // Render enemy projectiles
