@@ -61,10 +61,15 @@ export class CollectionDimension extends Dimension {
         // Update power-ups
         this.powerups.forEach(p => p.update(deltaTime));
 
-        // Check for expired power-ups and respawn them
-        const expiredPowerups = this.powerups.filter(p => !p.active && p.expired);
-        expiredPowerups.forEach(() => {
-            this.spawnPowerup(); // Respawn in new location
+        // Count how many inactive power-ups (collected or expired)
+        const inactivePowerups = this.powerups.filter(p => !p.active);
+
+        // Remove inactive power-ups
+        this.powerups = this.powerups.filter(p => p.active);
+
+        // Respawn new power-ups for each inactive one (keeps the game flowing!)
+        inactivePowerups.forEach(() => {
+            this.spawnPowerup();
         });
 
         // Update traps
@@ -77,8 +82,7 @@ export class CollectionDimension extends Dimension {
             }
         });
 
-        // Remove collected power-ups and triggered traps
-        this.powerups = this.powerups.filter(p => p.active);
+        // Remove triggered traps
         this.traps = this.traps.filter(t => t.active);
 
         // Complete when enough time has passed (allow exploring)

@@ -3,11 +3,61 @@ import { Projectile } from './Projectile.js';
 
 export class AlienBoss extends Boss {
     constructor(x, y) {
-        super(x, y, 80, 60, 'Alien', 80); // Increased from 30 to 80
+        super(x, y, 80, 60, 'Alien', 80);
         this.color = '#00ff00';
-        this.shootInterval = 70; // Faster shooting (was 120)
+        this.shootInterval = 70;
         this.isEvil = true;
-        this.speed = 2.5; // Faster movement (was 1.5)
+        this.speed = 2.5;
+
+        // Special abilities
+        this.teleportCooldown = 300; // 5 seconds
+        this.teleportTimer = 0;
+        this.isTeleporting = false;
+        this.teleportDuration = 30; // Half second
+    }
+
+    updateMovement(deltaTime, player) {
+        if (!player || this.isTeleporting) return;
+
+        // Chase the player!
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > 10) {
+            // Move towards player
+            this.x += (dx / distance) * this.speed * deltaTime;
+            this.y += (dy / distance) * this.speed * deltaTime;
+        }
+
+        // Keep on screen
+        this.x = Math.max(0, Math.min(800 - this.width, this.x));
+        this.y = Math.max(50, Math.min(300, this.y)); // Stay in upper half
+
+        // Teleport ability
+        this.teleportTimer += deltaTime;
+        if (this.teleportTimer >= this.teleportCooldown && Math.random() < 0.02) {
+            this.teleport(player);
+        }
+    }
+
+    teleport(player) {
+        this.isTeleporting = true;
+        this.teleportTimer = 0;
+
+        setTimeout(() => {
+            // Teleport near player!
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 100 + Math.random() * 100;
+            this.x = player.x + Math.cos(angle) * distance;
+            this.y = player.y + Math.sin(angle) * distance;
+
+            // Keep on screen
+            this.x = Math.max(0, Math.min(800 - this.width, this.x));
+            this.y = Math.max(50, Math.min(300, this.y));
+
+            this.isTeleporting = false;
+        }, this.teleportDuration * 16.67); // Convert frames to ms
     }
 
     shoot() {
@@ -19,7 +69,7 @@ export class AlienBoss extends Boss {
                 this.x + this.width / 2 - 4,
                 this.y + this.height,
                 0,
-                3, // Slower projectile
+                3,
                 1,
                 this.color
             )];
@@ -30,17 +80,25 @@ export class AlienBoss extends Boss {
     turnGood() {
         this.isEvil = false;
         this.defeated = true;
-        this.color = '#88ff88'; // Lighter green when good
+        this.color = '#88ff88';
     }
 
     render(ctx) {
-        // Alien body - rounded rectangle
+        // Teleport effect
+        if (this.isTeleporting) {
+            ctx.globalAlpha = 0.3;
+        }
+
+        // Shield first
+        this.renderShield(ctx);
+
+        // Alien body
         ctx.fillStyle = this.color;
         ctx.beginPath();
         ctx.roundRect(this.x, this.y, this.width, this.height, 10);
         ctx.fill();
 
-        // Big alien eyes
+        // Eyes
         const eyeColor = this.isEvil ? '#fff' : '#00ffff';
         ctx.fillStyle = eyeColor;
         ctx.beginPath();
@@ -71,5 +129,7 @@ export class AlienBoss extends Boss {
         ctx.arc(this.x + 10, this.y - 15, 4, 0, Math.PI * 2);
         ctx.arc(this.x + 70, this.y - 15, 4, 0, Math.PI * 2);
         ctx.fill();
+
+        ctx.globalAlpha = 1;
     }
 }

@@ -30,7 +30,7 @@ export class BossDimension extends Dimension {
             this.boss.y += 2 * deltaTime;
         } else {
             // Boss is in position, start combat
-            this.boss.update(deltaTime);
+            this.boss.update(deltaTime, player);
 
             // Boss shoots
             const newProjectiles = this.boss.shoot();

@@ -296,12 +296,17 @@
             if (currentDimension.type === 'boss' && currentDimension.boss && !currentDimension.boss.defeated) {
                 playerProjectiles.forEach(proj => {
                     if (proj.active && proj.collidesWith(currentDimension.boss)) {
-                        currentDimension.boss.takeDamage(proj.damage);
+                        const damageDealt = currentDimension.boss.takeDamage(proj.damage);
                         proj.destroy();
-                        engine.state.score += 10;
 
-                        // Hit effect!
-                        particles.push(...createHitEffect(proj.x + proj.width / 2, proj.y + proj.height / 2, proj.color));
+                        if (damageDealt) {
+                            // Damage dealt - normal hit effect
+                            engine.state.score += 10;
+                            particles.push(...createHitEffect(proj.x + proj.width / 2, proj.y + proj.height / 2, proj.color));
+                        } else {
+                            // Shield blocked! Show cyan shield effect
+                            particles.push(...createHitEffect(proj.x + proj.width / 2, proj.y + proj.height / 2, '#00ffff'));
+                        }
 
                         // Boss defeated explosion!
                         if (currentDimension.boss.defeated) {
