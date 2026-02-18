@@ -529,18 +529,39 @@
 
             player.setVelocity(vx, vy);
 
-            // RAPID FIRE SHOOTING with WASD directional control!
-            if (keys[' '] && shootCooldown <= 0 && player.weapon) {
+            // SHOOTING SYSTEM
+            // Spacebar = shoot up | WASD = shoot in that direction (no spacebar needed!)
+            let shouldShoot = false;
+            let shootDirX = 0;
+            let shootDirY = 0;
+
+            // Check for spacebar (shoots straight up)
+            if (keys[' ']) {
+                shouldShoot = true;
+                shootDirX = 0;
+                shootDirY = -1; // Up
+            }
+
+            // Check for WASD keys (shoot in those directions)
+            const wPressed = keys['w'] || keys['W'];
+            const aPressed = keys['a'] || keys['A'];
+            const sPressed = keys['s'] || keys['S'];
+            const dPressed = keys['d'] || keys['D'];
+
+            if (wPressed || aPressed || sPressed || dPressed) {
+                shouldShoot = true;
+                shootDirX = 0;
+                shootDirY = 0;
+
+                if (wPressed) shootDirY = -1;  // Up
+                if (sPressed) shootDirY = 1;   // Down
+                if (aPressed) shootDirX = -1;  // Left
+                if (dPressed) shootDirX = 1;   // Right
+            }
+
+            // Fire weapon if any shoot key is pressed
+            if (shouldShoot && shootCooldown <= 0 && player.weapon) {
                 const newProjectiles = player.weapon.fire(player, engine.state.entities);
-
-                // Check WASD keys for shooting direction
-                let shootDirX = 0;
-                let shootDirY = -1; // Default: shoot up
-
-                if (keys['w'] || keys['W']) shootDirY = -1;
-                if (keys['s'] || keys['S']) shootDirY = 1;
-                if (keys['a'] || keys['A']) shootDirX = -1;
-                if (keys['d'] || keys['D']) shootDirX = 1;
 
                 // Apply directional shooting to projectiles
                 newProjectiles.forEach(proj => {
@@ -893,8 +914,8 @@
             ctx.fillStyle = '#ffaa00';
             ctx.font = 'bold 12px Courier New';
             ctx.fillText('Arrow Keys = Move', 10, 220);
-            ctx.fillText('WASD = Aim Direction', 10, 235);
-            ctx.fillText('Space = Shoot', 10, 250);
+            ctx.fillText('WASD = Shoot Direction', 10, 235);
+            ctx.fillText('Space = Shoot Up', 10, 250);
 
             // Victory screen - EPIC!
             if (gameWon) {
