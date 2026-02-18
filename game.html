@@ -614,7 +614,7 @@
             });
 
             // Collision detection - player projectiles vs boss
-            if (currentDimension.type === 'boss' && currentDimension.boss && !currentDimension.boss.defeated) {
+            if (currentDimension.type === 'boss' && currentDimension.boss && !currentDimension.boss.defeated && !currentDimension.boss.isAlly) {
                 playerProjectiles.forEach(proj => {
                     if (proj.active && proj.collidesWith(currentDimension.boss)) {
                         const damageDealt = currentDimension.boss.takeDamage(proj.damage);
