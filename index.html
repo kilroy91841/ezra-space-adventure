@@ -115,8 +115,14 @@
         // Player health and lives system
         let playerHealth = 100;
         const MAX_HEALTH = 100;
-        let playerLives = 3;
+        let playerLives = 4; // Ezra gets 4 lives!
         let invulnerableTimer = 0; // Invulnerability after getting hit
+
+        // Special power-up effects
+        let speedBoostTimer = 0;
+        let shieldTimer = 0;
+        const NORMAL_SPEED = 5;
+        const BOOSTED_SPEED = 8;
 
         // Player projectiles
         let playerProjectiles = [];
@@ -623,14 +629,24 @@
                             particles.push(...createHitEffect(proj.x + proj.width / 2, proj.y + proj.height / 2, '#00ffff'));
                         }
 
-                        // Boss defeated explosion!
+                        // Boss defeated - Alien becomes ally!
                         if (currentDimension.boss.defeated) {
-                            particles.push(...createExplosion(
-                                currentDimension.boss.x + currentDimension.boss.width / 2,
-                                currentDimension.boss.y + currentDimension.boss.height / 2,
-                                currentDimension.boss.color,
-                                40
-                            ));
+                            if (currentDimension.boss.name === 'Alien') {
+                                // Alien boss becomes your ally!
+                                currentDimension.boss.becomeAlly();
+                                particles.push(...createSparkle(
+                                    currentDimension.boss.x + currentDimension.boss.width / 2,
+                                    currentDimension.boss.y + currentDimension.boss.height / 2
+                                ));
+                            } else {
+                                // Other bosses explode
+                                particles.push(...createExplosion(
+                                    currentDimension.boss.x + currentDimension.boss.width / 2,
+                                    currentDimension.boss.y + currentDimension.boss.height / 2,
+                                    currentDimension.boss.color,
+                                    40
+                                ));
+                            }
                         }
                     }
                 });
@@ -671,12 +687,31 @@
                 invulnerableTimer -= deltaTime;
             }
 
+            // Update special power-up timers
+            if (speedBoostTimer > 0) {
+                speedBoostTimer -= deltaTime;
+                if (speedBoostTimer <= 0) {
+                    player.speed = NORMAL_SPEED; // Reset to normal speed
+                }
+            }
+
+            if (shieldTimer > 0) {
+                shieldTimer -= deltaTime;
+            }
+
             // Collision detection - enemy projectiles vs player
             const enemyProjectiles = currentDimension.getEnemyProjectiles ? currentDimension.getEnemyProjectiles() : [];
             enemyProjectiles.forEach(proj => {
                 if (proj.active && proj.collidesWith(player) && invulnerableTimer <= 0) {
-                    player.removePowerup();
                     proj.destroy();
+
+                    // Shield blocks damage!
+                    if (shieldTimer > 0) {
+                        particles.push(...createHitEffect(proj.x + proj.width / 2, proj.y + proj.height / 2, '#00ffff'));
+                        return;
+                    }
+
+                    player.removePowerup();
 
                     // Take damage!
                     playerHealth -= 20;
@@ -733,9 +768,9 @@
                 }
             });
 
-            // Collision detection - player projectiles vs chasing enemies (including practice mode!)
+            // Collision detection - player projectiles vs chasing enemies
             chasingEnemies.forEach(enemy => {
-                if (enemy && enemy.active) {
+                if (enemy && enemy.active && !enemy.isAlly) { // Don't hurt allies!
                     playerProjectiles.forEach(proj => {
                         if (proj.active && proj.collidesWith(enemy)) {
                             enemy.destroy();
@@ -759,7 +794,21 @@
             const powerups = currentDimension.getPowerUps ? currentDimension.getPowerUps() : [];
             powerups.forEach(powerup => {
                 if (powerup.active && powerup.collidesWith(player)) {
-                    player.addPowerup();
+                    // Handle special power-up types!
+                    if (powerup.type === 'speed') {
+                        speedBoostTimer = powerup.duration;
+                        player.speed = BOOSTED_SPEED;
+                    } else if (powerup.type === 'life') {
+                        playerLives++;
+                    } else if (powerup.type === 'shield') {
+                        shieldTimer = powerup.duration;
+                    } else if (powerup.type === 'health') {
+                        playerHealth = Math.min(MAX_HEALTH, playerHealth + powerup.healAmount);
+                    } else {
+                        // Regular power-up
+                        player.addPowerup();
+                    }
+
                     powerup.collect();
                     if (currentDimension.collectPowerup) {
                         currentDimension.collectPowerup();
@@ -783,6 +832,27 @@
 
                     // Red explosion effect!
                     particles.push(...createHitEffect(trap.x + trap.width / 2, trap.y + trap.height / 2, '#ff0000'));
+                }
+            });
+
+            // Collision detection - stage hazards!
+            const hazards = currentDimension.getHazards ? currentDimension.getHazards() : [];
+            hazards.forEach(hazard => {
+                if (hazard.collidesWith(player)) {
+                    if (hazard.type === 'lava' && invulnerableTimer <= 0 && shieldTimer <= 0) {
+                        // Lava damages you!
+                        playerHealth -= hazard.damage;
+                        invulnerableTimer = 30; // Brief invulnerability
+                        particles.push(...createHitEffect(player.x + player.width / 2, player.y + player.height / 2, '#ff4400'));
+                    } else if (hazard.type === 'trampoline') {
+                        // Bounce!
+                        player.vy = -hazard.bounceForce;
+                        hazard.bounce();
+                    } else if (hazard.type === 'ice') {
+                        // Make player slippery!
+                        player.vx *= hazard.slipperiness;
+                        player.vy *= hazard.slipperiness;
+                    }
                 }
             });
 
@@ -916,6 +986,29 @@
             ctx.fillText('Arrow Keys = Move', 10, 220);
             ctx.fillText('WASD = Shoot Direction', 10, 235);
             ctx.fillText('Space = Shoot Up', 10, 250);
+
+            // Active power-up indicators
+            let powerupY = 270;
+            if (speedBoostTimer > 0) {
+                ctx.fillStyle = '#00ffff';
+                ctx.font = 'bold 14px Courier New';
+                ctx.fillText(`⚡ SPEED: ${Math.ceil(speedBoostTimer / 60)}s`, 10, powerupY);
+                powerupY += 20;
+            }
+            if (shieldTimer > 0) {
+                ctx.fillStyle = '#00ccff';
+                ctx.font = 'bold 14px Courier New';
+                ctx.fillText(`🛡️ SHIELD: ${Math.ceil(shieldTimer / 60)}s`, 10, powerupY);
+                powerupY += 20;
+
+                // Draw shield around player
+                const pulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
+                ctx.strokeStyle = `rgba(0, 204, 255, ${pulse})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(player.x + player.width / 2, player.y + player.height / 2, 35, 0, Math.PI * 2);
+                ctx.stroke();
+            }
 
             // Victory screen - EPIC!
             if (gameWon) {
