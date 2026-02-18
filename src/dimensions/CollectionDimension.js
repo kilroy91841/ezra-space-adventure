@@ -1,6 +1,8 @@
 import { Dimension, DimensionType } from './Dimension.js';
 import { PowerUp } from '../entities/PowerUp.js';
+import { SpeedBoost, ExtraLife, ShieldPowerUp, HealthRestore } from '../entities/SpecialPowerUps.js';
 import { DamageTrap } from '../entities/DamageTrap.js';
+import { Lava, Trampoline, IcePatch } from '../entities/StageHazards.js';
 import { ChasingEnemy } from '../entities/ChasingEnemy.js';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
 
@@ -9,6 +11,7 @@ export class CollectionDimension extends Dimension {
         super(number, DimensionType.PUZZLE, name);
         this.powerups = [];
         this.traps = [];
+        this.hazards = []; // Stage hazards!
         this.chasingEnemies = []; // Now multiple enemies!
         this.collectedCount = 0;
         this.totalPowerups = 0;
@@ -18,6 +21,7 @@ export class CollectionDimension extends Dimension {
     onEnter(gameState) {
         this.powerups = [];
         this.traps = [];
+        this.hazards = [];
         this.chasingEnemies = []; // Start with NO aliens!
         this.collectedCount = 0;
         this.timeInDimension = 0;
@@ -27,11 +31,25 @@ export class CollectionDimension extends Dimension {
         this.spawnPowerup();
         this.spawnPowerup();
 
+        // Add special power-ups!
+        this.powerups.push(new SpeedBoost(CANVAS_WIDTH * 0.2, CANVAS_HEIGHT * 0.3, true, true));
+        this.powerups.push(new ExtraLife(CANVAS_WIDTH * 0.8, CANVAS_HEIGHT * 0.7, true, true));
+        this.powerups.push(new ShieldPowerUp(CANVAS_WIDTH * 0.6, CANVAS_HEIGHT * 0.4, true, true));
+        this.powerups.push(new HealthRestore(CANVAS_WIDTH * 0.3, CANVAS_HEIGHT * 0.8, true, true));
+
         // DAMAGE TRAPS! (look like power-ups but hurt you!)
         this.traps.push(new DamageTrap(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 3)); // Center trap
         this.traps.push(new DamageTrap(CANVAS_WIDTH * 0.17, CANVAS_HEIGHT * 0.22));
         this.traps.push(new DamageTrap(CANVAS_WIDTH * 0.5, CANVAS_HEIGHT * 0.44));
         this.traps.push(new DamageTrap(CANVAS_WIDTH * 0.25, CANVAS_HEIGHT * 0.5));
+
+        // STAGE HAZARDS!
+        this.hazards.push(new Lava(CANVAS_WIDTH * 0.4, CANVAS_HEIGHT * 0.6));
+        this.hazards.push(new Lava(CANVAS_WIDTH * 0.7, CANVAS_HEIGHT * 0.3));
+        this.hazards.push(new Trampoline(CANVAS_WIDTH * 0.5, CANVAS_HEIGHT * 0.8));
+        this.hazards.push(new Trampoline(CANVAS_WIDTH * 0.2, CANVAS_HEIGHT * 0.5));
+        this.hazards.push(new IcePatch(CANVAS_WIDTH * 0.8, CANVAS_HEIGHT * 0.5));
+        this.hazards.push(new IcePatch(CANVAS_WIDTH * 0.3, CANVAS_HEIGHT * 0.2));
 
         this.totalPowerups = 8; // Need to collect 8 to complete
     }
@@ -76,6 +94,9 @@ export class CollectionDimension extends Dimension {
         // Update traps
         this.traps.forEach(t => t.update(deltaTime));
 
+        // Update hazards
+        this.hazards.forEach(h => h.update(deltaTime));
+
         // Update all chasing aliens!
         this.chasingEnemies.forEach(alien => {
             if (alien && player) {
@@ -102,6 +123,9 @@ export class CollectionDimension extends Dimension {
                 alien.render(ctx);
             }
         });
+
+        // Render stage hazards (render first so they're behind everything)
+        this.hazards.forEach(h => h.render(ctx));
 
         // Render all power-ups
         this.powerups.forEach(p => p.render(ctx));
@@ -136,6 +160,10 @@ export class CollectionDimension extends Dimension {
 
     getTraps() {
         return this.traps;
+    }
+
+    getHazards() {
+        return this.hazards;
     }
 
     collectPowerup() {
