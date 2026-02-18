@@ -81,18 +81,7 @@ export class AlienBoss extends Boss {
     turnGood() {
         this.isEvil = false;
         this.defeated = true;
-        this.isAlly = true; // Now fights with you!
         this.color = '#88ff88';
-        this.health = this.maxHealth; // Full health as ally
-    }
-
-    becomeAlly() {
-        this.isEvil = false;
-        this.isAlly = true;
-        this.defeated = false; // Not defeated, joined you!
-        this.color = '#88ff88';
-        this.health = this.maxHealth;
-        this.shootInterval = 40; // Shoots to help you
     }
 
     render(ctx) {

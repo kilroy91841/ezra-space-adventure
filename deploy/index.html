@@ -115,7 +115,7 @@
         // Player health and lives system
         let playerHealth = 100;
         const MAX_HEALTH = 100;
-        let playerLives = 4; // Ezra gets 4 lives!
+        let playerLives = 3;
         let invulnerableTimer = 0; // Invulnerability after getting hit
 
         // Player projectiles
@@ -733,29 +733,27 @@
                 }
             });
 
-            // Collision detection - player projectiles vs chasing enemies (ONLY in practice mode!)
-            if (isPracticeMode) {
-                chasingEnemies.forEach(enemy => {
-                    if (enemy && enemy.active) {
-                        playerProjectiles.forEach(proj => {
-                            if (proj.active && proj.collidesWith(enemy)) {
-                                enemy.destroy();
-                                proj.destroy();
+            // Collision detection - player projectiles vs chasing enemies (including practice mode!)
+            chasingEnemies.forEach(enemy => {
+                if (enemy && enemy.active) {
+                    playerProjectiles.forEach(proj => {
+                        if (proj.active && proj.collidesWith(enemy)) {
+                            enemy.destroy();
+                            proj.destroy();
 
-                                // Explosion effect!
-                                particles.push(...createExplosion(
-                                    enemy.x + enemy.width / 2,
-                                    enemy.y + enemy.height / 2,
-                                    enemy.color,
-                                    20
-                                ));
+                            // Explosion effect!
+                            particles.push(...createExplosion(
+                                enemy.x + enemy.width / 2,
+                                enemy.y + enemy.height / 2,
+                                enemy.color,
+                                20
+                            ));
 
-                                engine.state.score += 50;
-                            }
-                        });
-                    }
-                });
-            }
+                            engine.state.score += 50;
+                        }
+                    });
+                }
+            });
 
             // Collision detection - power-ups
             const powerups = currentDimension.getPowerUps ? currentDimension.getPowerUps() : [];
