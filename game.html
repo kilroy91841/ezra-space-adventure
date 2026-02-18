@@ -64,6 +64,7 @@
         import { MiniDragonBoss, DragonBoss } from './src/entities/DragonBoss.js';
         import { IceShooter, FireShooter, GiantSword, BigBomb } from './src/weapons/EzraWeapons.js';
         import { createExplosion, createHitEffect, createSparkle } from './src/effects/Particle.js';
+        import { CHARACTER_LIST, CharacterTypes } from './src/entities/CharacterTypes.js';
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -103,6 +104,9 @@
         let gameWon = false;
         let gameOver = false;
         let gameStarted = false;
+        let characterSelected = false;
+        let selectedCharacter = null;
+        let hoveredCharacterIndex = -1;
 
         // Player health and lives system
         let playerHealth = 100;
@@ -126,13 +130,67 @@
         let mouseY = 500;
 
         canvas.addEventListener('mousemove', (e) => {
-            if (!useMouseMovement) return;
             const rect = canvas.getBoundingClientRect();
-            mouseX = e.clientX - rect.left;
-            mouseY = e.clientY - rect.top;
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+
+            // Character selection hover
+            if (!characterSelected) {
+                const boxWidth = 220;
+                const boxHeight = 180;
+                const spacing = 40;
+                const totalWidth = CHARACTER_LIST.length * boxWidth + (CHARACTER_LIST.length - 1) * spacing;
+                const startX = (canvas.width - totalWidth) / 2;
+                const startY = 280;
+
+                hoveredCharacterIndex = -1;
+                CHARACTER_LIST.forEach((char, index) => {
+                    const x = startX + index * (boxWidth + spacing);
+                    const y = startY;
+
+                    if (mx >= x && mx <= x + boxWidth &&
+                        my >= y && my <= y + boxHeight) {
+                        hoveredCharacterIndex = index;
+                    }
+                });
+                canvas.style.cursor = hoveredCharacterIndex >= 0 ? 'pointer' : 'default';
+                return;
+            }
+
+            if (!useMouseMovement) return;
+            mouseX = mx;
+            mouseY = my;
         });
 
-        canvas.addEventListener('click', () => {
+        canvas.addEventListener('click', (e) => {
+            // Character selection
+            if (!characterSelected) {
+                const rect = canvas.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+
+                // Check if clicked on a character
+                const boxWidth = 220;
+                const boxHeight = 180;
+                const spacing = 40;
+                const totalWidth = CHARACTER_LIST.length * boxWidth + (CHARACTER_LIST.length - 1) * spacing;
+                const startX = (canvas.width - totalWidth) / 2;
+                const startY = 280;
+
+                CHARACTER_LIST.forEach((char, index) => {
+                    const x = startX + index * (boxWidth + spacing);
+                    const y = startY;
+
+                    if (clickX >= x && clickX <= x + boxWidth &&
+                        clickY >= y && clickY <= y + boxHeight) {
+                        selectedCharacter = char;
+                        characterSelected = true;
+                        player.setCharacterType(char);
+                    }
+                });
+                return;
+            }
+
             useMouseMovement = true; // Click to enable mouse movement
         });
 
@@ -201,7 +259,67 @@
             const deltaTime = Math.min((currentTime - lastTime) / 16.67, 2); // Normalize to 60fps, cap at 2x
             lastTime = currentTime;
 
-            // Title screen
+            // Character selection screen
+            if (!characterSelected) {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw stars
+                stars.forEach(star => {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(star.x, star.y, star.size, star.size);
+                });
+
+                // Title
+                ctx.fillStyle = '#00ff00';
+                ctx.font = 'bold 48px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText("CHOOSE YOUR CHARACTER", canvas.width / 2, 120);
+
+                ctx.fillStyle = '#ffff00';
+                ctx.font = '24px Courier New';
+                ctx.fillText('Click to select!', canvas.width / 2, 180);
+
+                // Draw character options
+                const boxWidth = 220;
+                const boxHeight = 180;
+                const spacing = 40;
+                const totalWidth = CHARACTER_LIST.length * boxWidth + (CHARACTER_LIST.length - 1) * spacing;
+                const startX = (canvas.width - totalWidth) / 2;
+                const startY = 280;
+
+                CHARACTER_LIST.forEach((char, index) => {
+                    const x = startX + index * (boxWidth + spacing);
+                    const y = startY;
+                    const isHovered = hoveredCharacterIndex === index;
+
+                    // Box background
+                    ctx.fillStyle = isHovered ? '#333' : '#222';
+                    ctx.fillRect(x, y, boxWidth, boxHeight);
+
+                    // Border
+                    ctx.strokeStyle = isHovered ? '#ffff00' : char.color;
+                    ctx.lineWidth = isHovered ? 4 : 2;
+                    ctx.strokeRect(x, y, boxWidth, boxHeight);
+
+                    // Character preview (centered and scaled)
+                    const previewSize = 80;
+                    const previewX = x + (boxWidth - previewSize) / 2;
+                    const previewY = y + 30;
+                    char.render(ctx, previewX, previewY, previewSize, previewSize);
+
+                    // Character name
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 20px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(char.name, x + boxWidth / 2, y + boxHeight - 20);
+                });
+
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            // Title screen (after character selected)
             if (!gameStarted) {
                 ctx.fillStyle = '#000';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -216,22 +334,22 @@
                 ctx.fillStyle = '#00ff00';
                 ctx.font = 'bold 56px Courier New';
                 ctx.textAlign = 'center';
-                ctx.fillText("EZRA'S", 400, 180);
-                ctx.fillText("SPACE ADVENTURE", 400, 250);
+                ctx.fillText("EZRA'S", canvas.width / 2, 180);
+                ctx.fillText("SPACE ADVENTURE", canvas.width / 2, 250);
 
-                // Robot preview
-                player.x = 385;
+                // Character preview
+                player.x = (canvas.width - player.width) / 2;
                 player.y = 300;
                 player.render(ctx);
 
                 // Instructions
                 ctx.fillStyle = '#ffff00';
                 ctx.font = '28px Courier New';
-                ctx.fillText('Press SPACEBAR to Start!', 400, 450);
+                ctx.fillText('Press SPACEBAR to Start!', canvas.width / 2, 500);
 
                 ctx.fillStyle = '#fff';
                 ctx.font = '18px Courier New';
-                ctx.fillText('Arrow Keys = Move | Space = Shoot | 1-4 = Switch Weapons', 400, 520);
+                ctx.fillText('Arrow Keys = Move | Space = Shoot | 1-4 = Switch Weapons', canvas.width / 2, 570);
 
                 requestAnimationFrame(gameLoop);
                 return;
