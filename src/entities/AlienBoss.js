@@ -8,6 +8,7 @@ export class AlienBoss extends Boss {
         this.color = '#00ff00';
         this.shootInterval = 70;
         this.isEvil = true;
+        this.isAlly = false; // Starts as enemy, becomes ally when defeated
         this.speed = 2.5;
 
         // Special abilities
