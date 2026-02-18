@@ -248,6 +248,20 @@
                     isPracticeMode = true;
                     gameStarted = true; // Auto-start practice mode
 
+                    // Give player ALL weapons in practice mode!
+                    player.weapon = new IceShooter();
+                    player.inventory = [
+                        new IceShooter(),
+                        new FireShooter(),
+                        new GiantSword(),
+                        new BigBomb()
+                    ];
+                    currentWeaponIndex = 0;
+
+                    // Full health and unlimited lives in practice!
+                    playerHealth = MAX_HEALTH;
+                    playerLives = 999;
+
                     // Switch to practice museum
                     const practiceMuseum = new PracticeMuseumDimension();
                     dimensionManager.dimensions = [practiceMuseum];
@@ -779,16 +793,54 @@
             ctx.font = '16px Courier New';
             ctx.fillText(`Lives: ${'❤️'.repeat(playerLives)}`, 10, 55);
 
-            // Weapon indicator
-            ctx.fillText(`Weapon: ${player.weapon ? player.weapon.name : 'None'}`, 10, 85);
-            ctx.font = '10px Courier New';
-            ctx.fillStyle = '#888';
-            ctx.fillText('(Press 1-4 to switch)', 10, 100);
+            // WEAPON SELECTOR - Big and visible!
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 16px Courier New';
+            ctx.fillText('WEAPONS:', 10, 95);
+
+            // Draw weapon boxes
+            const weaponBoxSize = 70;
+            const weaponBoxY = 105;
+            player.inventory.forEach((weapon, index) => {
+                const x = 10 + index * (weaponBoxSize + 10);
+                const isSelected = currentWeaponIndex === index;
+
+                // Box background
+                ctx.fillStyle = isSelected ? '#ffff00' : '#333';
+                ctx.fillRect(x, weaponBoxY, weaponBoxSize, weaponBoxSize);
+
+                // Border
+                ctx.strokeStyle = isSelected ? '#ff00ff' : '#666';
+                ctx.lineWidth = isSelected ? 4 : 2;
+                ctx.strokeRect(x, weaponBoxY, weaponBoxSize, weaponBoxSize);
+
+                // Weapon icon/color
+                ctx.fillStyle = weapon.color || '#fff';
+                if (weapon.name.includes('Ice')) {
+                    ctx.fillText('❄️', x + 22, weaponBoxY + 35);
+                } else if (weapon.name.includes('Fire')) {
+                    ctx.fillText('🔥', x + 22, weaponBoxY + 35);
+                } else if (weapon.name.includes('Sword')) {
+                    ctx.fillText('⚔️', x + 22, weaponBoxY + 35);
+                } else if (weapon.name.includes('Bomb')) {
+                    ctx.fillText('💣', x + 22, weaponBoxY + 35);
+                }
+
+                // Weapon number
+                ctx.fillStyle = isSelected ? '#000' : '#fff';
+                ctx.font = 'bold 14px Courier New';
+                ctx.fillText((index + 1).toString(), x + 5, weaponBoxY + 15);
+
+                // Weapon name (abbreviated)
+                ctx.font = '10px Courier New';
+                const shortName = weapon.name.split(' ')[0];
+                ctx.fillText(shortName, x + 3, weaponBoxY + weaponBoxSize - 5);
+            });
 
             // Movement mode indicator
             ctx.fillStyle = useMouseMovement ? '#00ff00' : '#fff';
             ctx.font = '12px Courier New';
-            ctx.fillText(`${useMouseMovement ? 'MOUSE' : 'KEYBOARD'} mode (M to toggle)`, 10, 120);
+            ctx.fillText(`${useMouseMovement ? 'MOUSE' : 'KEYBOARD'} mode (M to toggle)`, 10, 200);
 
             // Victory screen - EPIC!
             if (gameWon) {

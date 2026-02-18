@@ -97,17 +97,17 @@ export class DragonBoss extends Boss {
             this.shootTimer = 0;
 
             if (this.phase === 1) {
-                // Phase 1: Two fireballs
+                // Phase 1: Two fireballs (faster for larger canvas!)
                 return [
-                    new Projectile(this.x + 40, this.y + this.height, -1, 4, 1, this.color),
-                    new Projectile(this.x + this.width - 40, this.y + this.height, 1, 4, 1, this.color)
+                    new Projectile(this.x + 40, this.y + this.height, -2, 9, 1, this.color),
+                    new Projectile(this.x + this.width - 40, this.y + this.height, 2, 9, 1, this.color)
                 ];
             } else {
-                // Phase 2: THREE fireballs!
+                // Phase 2: THREE fireballs! (even faster!)
                 return [
-                    new Projectile(this.x + 30, this.y + this.height, -2, 5, 1, this.color),
-                    new Projectile(this.x + this.width / 2, this.y + this.height, 0, 5, 1, this.color),
-                    new Projectile(this.x + this.width - 30, this.y + this.height, 2, 5, 1, this.color)
+                    new Projectile(this.x + 30, this.y + this.height, -3, 11, 1, this.color),
+                    new Projectile(this.x + this.width / 2, this.y + this.height, 0, 11, 1, this.color),
+                    new Projectile(this.x + this.width - 30, this.y + this.height, 3, 11, 1, this.color)
                 ];
             }
         }
@@ -250,10 +250,10 @@ export class MiniDragonBoss extends Boss {
         if (this.shootTimer >= this.shootInterval) {
             this.shootTimer = 0;
 
-            // Shoots TWO fireballs
+            // Shoots TWO fireballs (faster for larger canvas!)
             return [
-                new Projectile(this.x + 30, this.y + this.height, -1, 4, 1, this.color),
-                new Projectile(this.x + this.width - 30, this.y + this.height, 1, 4, 1, this.color)
+                new Projectile(this.x + 30, this.y + this.height, -2, 9, 1, this.color),
+                new Projectile(this.x + this.width - 30, this.y + this.height, 2, 9, 1, this.color)
             ];
         }
         return [];

@@ -65,12 +65,12 @@ export class AlienBoss extends Boss {
         if (this.shootTimer >= this.shootInterval) {
             this.shootTimer = 0;
 
-            // Alien shoots green blobs
+            // Alien shoots green blobs (faster speed for larger canvas!)
             return [new Projectile(
                 this.x + this.width / 2 - 4,
                 this.y + this.height,
                 0,
-                3,
+                8,
                 1,
                 this.color
             )];

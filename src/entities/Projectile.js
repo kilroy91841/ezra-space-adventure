@@ -1,4 +1,5 @@
 import { Entity } from './Entity.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
 
 export class Projectile extends Entity {
     constructor(x, y, vx, vy, damage, color = '#ff00ff') {
@@ -13,9 +14,9 @@ export class Projectile extends Entity {
         this.x += this.vx * deltaTime;
         this.y += this.vy * deltaTime;
 
-        // Deactivate if off screen
-        if (this.y < -this.height || this.y > 700 ||
-            this.x < -this.width || this.x > 900) {
+        // Deactivate if off screen (with margin for larger canvas)
+        if (this.y < -this.height || this.y > CANVAS_HEIGHT + 100 ||
+            this.x < -this.width - 100 || this.x > CANVAS_WIDTH + 100) {
             this.destroy();
         }
     }
