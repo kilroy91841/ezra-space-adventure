@@ -2,6 +2,7 @@ import { Dimension, DimensionType } from './Dimension.js';
 import { PowerUp } from '../entities/PowerUp.js';
 import { DamageTrap } from '../entities/DamageTrap.js';
 import { ChasingEnemy } from '../entities/ChasingEnemy.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
 
 export class CollectionDimension extends Dimension {
     constructor(number, name) {
@@ -27,18 +28,18 @@ export class CollectionDimension extends Dimension {
         this.spawnPowerup();
 
         // DAMAGE TRAPS! (look like power-ups but hurt you!)
-        this.traps.push(new DamageTrap(400, 300)); // Center trap
-        this.traps.push(new DamageTrap(200, 200));
-        this.traps.push(new DamageTrap(600, 400));
-        this.traps.push(new DamageTrap(300, 450));
+        this.traps.push(new DamageTrap(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 3)); // Center trap
+        this.traps.push(new DamageTrap(CANVAS_WIDTH * 0.17, CANVAS_HEIGHT * 0.22));
+        this.traps.push(new DamageTrap(CANVAS_WIDTH * 0.5, CANVAS_HEIGHT * 0.44));
+        this.traps.push(new DamageTrap(CANVAS_WIDTH * 0.25, CANVAS_HEIGHT * 0.5));
 
         this.totalPowerups = 8; // Need to collect 8 to complete
     }
 
     spawnPowerup() {
-        // Spawn in random hidden location with expiration
-        const x = Math.random() * 760 + 20;
-        const y = Math.random() * 560 + 20;
+        // Spawn in random hidden location with expiration (20px margin from edges)
+        const x = Math.random() * (CANVAS_WIDTH - 40) + 20;
+        const y = Math.random() * (CANVAS_HEIGHT - 40) + 20;
         this.powerups.push(new PowerUp(x, y, true, true)); // hasExpiration = true
     }
 
@@ -47,10 +48,10 @@ export class CollectionDimension extends Dimension {
         const edge = Math.floor(Math.random() * 4);
         let x, y;
         switch(edge) {
-            case 0: x = Math.random() * 800; y = 0; break; // Top
-            case 1: x = 800; y = Math.random() * 600; break; // Right
-            case 2: x = Math.random() * 800; y = 600; break; // Bottom
-            case 3: x = 0; y = Math.random() * 600; break; // Left
+            case 0: x = Math.random() * CANVAS_WIDTH; y = 0; break; // Top
+            case 1: x = CANVAS_WIDTH; y = Math.random() * CANVAS_HEIGHT; break; // Right
+            case 2: x = Math.random() * CANVAS_WIDTH; y = CANVAS_HEIGHT; break; // Bottom
+            case 3: x = 0; y = Math.random() * CANVAS_HEIGHT; break; // Left
         }
         this.chasingEnemies.push(new ChasingEnemy(x, y));
     }

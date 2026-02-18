@@ -1,5 +1,6 @@
 import { Boss } from './Boss.js';
 import { Projectile } from './Projectile.js';
+import { CANVAS_WIDTH, BOSS_MAX_Y, BOSS_MINI_MAX_Y } from '../constants.js';
 
 export class DragonBoss extends Boss {
     constructor(x, y) {
@@ -65,8 +66,8 @@ export class DragonBoss extends Boss {
         this.y = this.centerY + Math.sin(this.circleAngle) * (this.circleRadius * 0.5) - this.height / 2;
 
         // Keep on screen
-        this.x = Math.max(0, Math.min(800 - this.width, this.x));
-        this.y = Math.max(50, Math.min(300, this.y));
+        this.x = Math.max(0, Math.min(CANVAS_WIDTH - this.width, this.x));
+        this.y = Math.max(50, Math.min(BOSS_MAX_Y, this.y));
     }
 
     startBurrow(player) {
@@ -84,8 +85,8 @@ export class DragonBoss extends Boss {
             this.y = this.targetPlayer.y - this.height / 2;
 
             // Keep on screen
-            this.x = Math.max(0, Math.min(800 - this.width, this.x));
-            this.y = Math.max(50, Math.min(300, this.y));
+            this.x = Math.max(0, Math.min(CANVAS_WIDTH - this.width, this.x));
+            this.y = Math.max(50, Math.min(BOSS_MAX_Y, this.y));
         }
     }
 
@@ -241,8 +242,8 @@ export class MiniDragonBoss extends Boss {
         }
 
         // Keep on screen
-        this.x = Math.max(0, Math.min(800 - this.width, this.x));
-        this.y = Math.max(50, Math.min(350, this.y));
+        this.x = Math.max(0, Math.min(CANVAS_WIDTH - this.width, this.x));
+        this.y = Math.max(50, Math.min(BOSS_MINI_MAX_Y, this.y));
     }
 
     shoot() {

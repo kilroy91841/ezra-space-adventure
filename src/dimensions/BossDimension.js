@@ -1,5 +1,6 @@
 import { Dimension, DimensionType } from './Dimension.js';
 import { PowerUp } from '../entities/PowerUp.js';
+import { CANVAS_WIDTH } from '../constants.js';
 
 export class BossDimension extends Dimension {
     constructor(number, name, boss, dropPowerups = 3) {
@@ -85,7 +86,7 @@ export class BossDimension extends Dimension {
         // Render boss
         if (!this.boss.defeated) {
             this.boss.render(ctx);
-            this.boss.renderHealthBar(ctx, 800);
+            this.boss.renderHealthBar(ctx, CANVAS_WIDTH);
         }
 
         // Render enemy projectiles

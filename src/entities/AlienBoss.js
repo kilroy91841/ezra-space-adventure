@@ -1,5 +1,6 @@
 import { Boss } from './Boss.js';
 import { Projectile } from './Projectile.js';
+import { CANVAS_WIDTH, BOSS_MAX_Y } from '../constants.js';
 
 export class AlienBoss extends Boss {
     constructor(x, y) {
@@ -31,8 +32,8 @@ export class AlienBoss extends Boss {
         }
 
         // Keep on screen
-        this.x = Math.max(0, Math.min(800 - this.width, this.x));
-        this.y = Math.max(50, Math.min(300, this.y)); // Stay in upper half
+        this.x = Math.max(0, Math.min(CANVAS_WIDTH - this.width, this.x));
+        this.y = Math.max(50, Math.min(BOSS_MAX_Y, this.y)); // Stay in upper half
 
         // Teleport ability
         this.teleportTimer += deltaTime;
@@ -53,8 +54,8 @@ export class AlienBoss extends Boss {
             this.y = player.y + Math.sin(angle) * distance;
 
             // Keep on screen
-            this.x = Math.max(0, Math.min(800 - this.width, this.x));
-            this.y = Math.max(50, Math.min(300, this.y));
+            this.x = Math.max(0, Math.min(CANVAS_WIDTH - this.width, this.x));
+            this.y = Math.max(50, Math.min(BOSS_MAX_Y, this.y));
 
             this.isTeleporting = false;
         }, this.teleportDuration * 16.67); // Convert frames to ms

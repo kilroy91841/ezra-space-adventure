@@ -1,4 +1,5 @@
 import { Entity } from './Entity.js';
+import { CANVAS_WIDTH } from '../constants.js';
 
 export class Boss extends Entity {
     constructor(x, y, width, height, name, maxHealth) {
@@ -64,7 +65,7 @@ export class Boss extends Entity {
         // Default: side to side (override in subclasses)
         this.x += this.speed * this.direction * deltaTime;
 
-        if (this.x <= 0 || this.x >= 800 - this.width) {
+        if (this.x <= 0 || this.x >= CANVAS_WIDTH - this.width) {
             this.direction *= -1;
         }
     }

@@ -1,4 +1,5 @@
 import { Entity } from './Entity.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
 
 export class ChasingEnemy extends Entity {
     constructor(x, y) {
@@ -24,9 +25,9 @@ export class ChasingEnemy extends Entity {
 
         // Keep on screen
         if (this.x < 0) this.x = 0;
-        if (this.x > 800 - this.width) this.x = 800 - this.width;
+        if (this.x > CANVAS_WIDTH - this.width) this.x = CANVAS_WIDTH - this.width;
         if (this.y < 0) this.y = 0;
-        if (this.y > 600 - this.height) this.y = 600 - this.height;
+        if (this.y > CANVAS_HEIGHT - this.height) this.y = CANVAS_HEIGHT - this.height;
     }
 
     render(ctx) {
