@@ -60,6 +60,7 @@
         import { CollectionDimension } from './src/dimensions/CollectionDimension.js';
         import { BossDimension } from './src/dimensions/BossDimension.js';
         import { MathPuzzleDimension } from './src/dimensions/MathPuzzleDimension.js';
+        import { PracticeMuseumDimension } from './src/dimensions/PracticeMuseumDimension.js';
         import { AlienBoss } from './src/entities/AlienBoss.js';
         import { MiniDragonBoss, DragonBoss } from './src/entities/DragonBoss.js';
         import { IceShooter, FireShooter, GiantSword, BigBomb } from './src/weapons/EzraWeapons.js';
@@ -107,6 +108,9 @@
         let characterSelected = false;
         let selectedCharacter = null;
         let hoveredCharacterIndex = -1;
+        let gameModeSelected = false;
+        let isPracticeMode = false;
+        let hoveredButton = null;
 
         // Player health and lives system
         let playerHealth = 100;
@@ -157,18 +161,52 @@
                 return;
             }
 
+            // Mode selection hover
+            if (characterSelected && !gameModeSelected) {
+                hoveredButton = null;
+
+                // Adventure button
+                const adventureBtn = { x: canvas.width / 2 - 350, y: 350, width: 300, height: 100 };
+                if (mx >= adventureBtn.x && mx <= adventureBtn.x + adventureBtn.width &&
+                    my >= adventureBtn.y && my <= adventureBtn.y + adventureBtn.height) {
+                    hoveredButton = 'adventure';
+                }
+
+                // Practice button
+                const practiceBtn = { x: canvas.width / 2 + 50, y: 350, width: 300, height: 100 };
+                if (mx >= practiceBtn.x && mx <= practiceBtn.x + practiceBtn.width &&
+                    my >= practiceBtn.y && my <= practiceBtn.y + practiceBtn.height) {
+                    hoveredButton = 'practice';
+                }
+
+                canvas.style.cursor = hoveredButton ? 'pointer' : 'default';
+                return;
+            }
+
+            // Practice museum button hover
+            if (isPracticeMode && gameStarted && currentDimension.spawnButtons) {
+                let overButton = false;
+                currentDimension.spawnButtons.forEach(button => {
+                    if (mx >= button.x && mx <= button.x + button.width &&
+                        my >= button.y && my <= button.y + button.height) {
+                        overButton = true;
+                    }
+                });
+                canvas.style.cursor = overButton ? 'pointer' : 'default';
+            }
+
             if (!useMouseMovement) return;
             mouseX = mx;
             mouseY = my;
         });
 
         canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
             // Character selection
             if (!characterSelected) {
-                const rect = canvas.getBoundingClientRect();
-                const clickX = e.clientX - rect.left;
-                const clickY = e.clientY - rect.top;
-
                 // Check if clicked on a character
                 const boxWidth = 220;
                 const boxHeight = 180;
@@ -188,6 +226,42 @@
                         player.setCharacterType(char);
                     }
                 });
+                return;
+            }
+
+            // Mode selection (Adventure vs Practice)
+            if (characterSelected && !gameModeSelected) {
+                // Adventure button
+                const adventureBtn = { x: canvas.width / 2 - 350, y: 350, width: 300, height: 100 };
+                if (clickX >= adventureBtn.x && clickX <= adventureBtn.x + adventureBtn.width &&
+                    clickY >= adventureBtn.y && clickY <= adventureBtn.y + adventureBtn.height) {
+                    gameModeSelected = true;
+                    isPracticeMode = false;
+                    return;
+                }
+
+                // Practice button
+                const practiceBtn = { x: canvas.width / 2 + 50, y: 350, width: 300, height: 100 };
+                if (clickX >= practiceBtn.x && clickX <= practiceBtn.x + practiceBtn.width &&
+                    clickY >= practiceBtn.y && clickY <= practiceBtn.y + practiceBtn.height) {
+                    gameModeSelected = true;
+                    isPracticeMode = true;
+                    gameStarted = true; // Auto-start practice mode
+
+                    // Switch to practice museum
+                    const practiceMuseum = new PracticeMuseumDimension();
+                    dimensionManager.dimensions = [practiceMuseum];
+                    dimensionManager.currentDimensionIndex = 0;
+                    currentDimension = practiceMuseum;
+                    currentDimension.onEnter(engine.state);
+                    return;
+                }
+                return;
+            }
+
+            // Practice museum button clicks
+            if (isPracticeMode && gameStarted && currentDimension.handleClick) {
+                currentDimension.handleClick(clickX, clickY);
                 return;
             }
 
@@ -319,8 +393,71 @@
                 return;
             }
 
-            // Title screen (after character selected)
-            if (!gameStarted) {
+            // Mode selection screen
+            if (characterSelected && !gameModeSelected) {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw stars
+                stars.forEach(star => {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(star.x, star.y, star.size, star.size);
+                });
+
+                // Title
+                ctx.fillStyle = '#00ff00';
+                ctx.font = 'bold 48px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText("CHOOSE YOUR MODE", canvas.width / 2, 150);
+
+                // Character preview
+                player.x = (canvas.width - player.width) / 2;
+                player.y = 200;
+                player.render(ctx);
+
+                // Adventure button
+                const adventureBtn = { x: canvas.width / 2 - 350, y: 350, width: 300, height: 100 };
+                const adventureHovered = hoveredButton === 'adventure';
+                ctx.fillStyle = adventureHovered ? '#00aa00' : '#00ff00';
+                ctx.fillRect(adventureBtn.x, adventureBtn.y, adventureBtn.width, adventureBtn.height);
+                ctx.strokeStyle = adventureHovered ? '#ffff00' : '#fff';
+                ctx.lineWidth = adventureHovered ? 4 : 2;
+                ctx.strokeRect(adventureBtn.x, adventureBtn.y, adventureBtn.width, adventureBtn.height);
+
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 32px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('🚀 START', adventureBtn.x + adventureBtn.width / 2, adventureBtn.y + 50);
+                ctx.font = '20px Courier New';
+                ctx.fillText('ADVENTURE', adventureBtn.x + adventureBtn.width / 2, adventureBtn.y + 80);
+
+                // Practice button
+                const practiceBtn = { x: canvas.width / 2 + 50, y: 350, width: 300, height: 100 };
+                const practiceHovered = hoveredButton === 'practice';
+                ctx.fillStyle = practiceHovered ? '#aa00aa' : '#cc00ff';
+                ctx.fillRect(practiceBtn.x, practiceBtn.y, practiceBtn.width, practiceBtn.height);
+                ctx.strokeStyle = practiceHovered ? '#ffff00' : '#fff';
+                ctx.lineWidth = practiceHovered ? 4 : 2;
+                ctx.strokeRect(practiceBtn.x, practiceBtn.y, practiceBtn.width, practiceBtn.height);
+
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 32px Courier New';
+                ctx.fillText('⚔️ PRACTICE', practiceBtn.x + practiceBtn.width / 2, practiceBtn.y + 50);
+                ctx.font = '20px Courier New';
+                ctx.fillText('MUSEUM', practiceBtn.x + practiceBtn.width / 2, practiceBtn.y + 80);
+
+                // Instructions
+                ctx.fillStyle = '#fff';
+                ctx.font = '18px Courier New';
+                ctx.fillText('Start Adventure: Full game with bosses and puzzles', canvas.width / 2, 500);
+                ctx.fillText('Practice Museum: Spawn enemies and test all weapons', canvas.width / 2, 530);
+
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            // Title screen (after mode selected, if adventure mode)
+            if (!gameStarted && !isPracticeMode) {
                 ctx.fillStyle = '#000';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -435,6 +572,36 @@
                                 40
                             ));
                         }
+                    }
+                });
+            }
+
+            // Collision detection - practice museum bosses
+            if (isPracticeMode && currentDimension.getBosses) {
+                const practiceBosses = currentDimension.getBosses();
+                practiceBosses.forEach(boss => {
+                    if (boss && !boss.defeated) {
+                        playerProjectiles.forEach(proj => {
+                            if (proj.active && proj.collidesWith(boss)) {
+                                const damageDealt = boss.takeDamage(proj.damage);
+                                proj.destroy();
+
+                                if (damageDealt) {
+                                    particles.push(...createHitEffect(proj.x + proj.width / 2, proj.y + proj.height / 2, proj.color));
+                                } else {
+                                    particles.push(...createHitEffect(proj.x + proj.width / 2, proj.y + proj.height / 2, '#00ffff'));
+                                }
+
+                                if (boss.defeated) {
+                                    particles.push(...createExplosion(
+                                        boss.x + boss.width / 2,
+                                        boss.y + boss.height / 2,
+                                        boss.color,
+                                        40
+                                    ));
+                                }
+                            }
+                        });
                     }
                 });
             }
