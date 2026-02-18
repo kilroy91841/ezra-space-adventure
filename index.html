@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ezra's Space Adventure!</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+        }
+        #gameCanvas {
+            border: 3px solid #00ff00;
+            background: #000;
+            box-shadow: 0 0 20px #00ff00;
+        }
+        .info {
+            margin-top: 20px;
+            font-size: 18px;
+            text-align: center;
+        }
+        .controls {
+            margin-top: 10px;
+            padding: 15px;
+            background: #111;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+        }
+        .title {
+            font-size: 32px;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="title">🤖 EZRA'S SPACE ADVENTURE 🚀</div>
+    <canvas id="gameCanvas" width="1200" height="900"></canvas>
+    <div class="info">
+        <div style="font-size: 24px; color: #00ff00; margin-bottom: 10px;"><span id="message">Welcome! Starting adventure...</span></div>
+        <div>Dimension: <span id="dimension">1</span> | Power-Ups: <span id="powerups">0</span> | Score: <span id="score">0</span></div>
+    </div>
+    <div class="controls">
+        <strong>Controls:</strong> Arrow Keys OR Mouse = Move | M = Toggle Mouse/Keyboard | SPACEBAR = Shoot | 1-4 = Switch Weapons
+    </div>
+
+    <script type="module">
+        import { GameEngine } from './src/engine/GameEngine.js';
+        import { Player } from './src/entities/Player.js';
+        import { DimensionManager } from './src/dimensions/DimensionManager.js';
+        import { CollectionDimension } from './src/dimensions/CollectionDimension.js';
+        import { BossDimension } from './src/dimensions/BossDimension.js';
+        import { MathPuzzleDimension } from './src/dimensions/MathPuzzleDimension.js';
+        import { PracticeMuseumDimension } from './src/dimensions/PracticeMuseumDimension.js';
+        import { AlienBoss } from './src/entities/AlienBoss.js';
+        import { MiniDragonBoss, DragonBoss } from './src/entities/DragonBoss.js';
+        import { IceShooter, FireShooter, GiantSword, BigBomb } from './src/weapons/EzraWeapons.js';
+        import { createExplosion, createHitEffect, createSparkle } from './src/effects/Particle.js';
+        import { CHARACTER_LIST, CharacterTypes } from './src/entities/CharacterTypes.js';
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Initialize game engine
+        const engine = new GameEngine();
+
+        // Create player
+        const player = new Player(385, 500);
+        engine.addEntity(player);
+
+        // Give player Ezra's favorite weapons!
+        player.weapon = new IceShooter(); // Start with Ice Shooter
+        player.inventory = [
+            new IceShooter(),
+            new FireShooter(),
+            new GiantSword(),
+            new BigBomb()
+        ];
+        let currentWeaponIndex = 0;
+
+        // Create dimension manager
+        const dimensionManager = new DimensionManager();
+
+        // Add dimensions
+        dimensionManager.addDimension(new CollectionDimension(1, 'Power-Up Hunt'));
+        dimensionManager.addDimension(new BossDimension(2, 'Alien Battle', new AlienBoss(300, 50), 5));
+        dimensionManager.addDimension(new MathPuzzleDimension(3, 'Math Puzzle Challenge'));
+        dimensionManager.addDimension(new BossDimension(4, 'Mini Dragon', new MiniDragonBoss(300, 50), 4));
+        dimensionManager.addDimension(new BossDimension(5, 'FINAL: Dragon Boss', new DragonBoss(300, 50), 10));
+
+        // Start first dimension
+        let currentDimension = dimensionManager.getCurrentDimension();
+        currentDimension.onEnter(engine.state);
+
+        // Game state
+        let gameWon = false;
+        let gameOver = false;
+        let gameStarted = false;
+        let characterSelected = false;
+        let selectedCharacter = null;
+        let hoveredCharacterIndex = -1;
+        let gameModeSelected = false;
+        let isPracticeMode = false;
+        let hoveredButton = null;
+
+        // Player health and lives system
+        let playerHealth = 100;
+        const MAX_HEALTH = 100;
+        let playerLives = 3;
+        let invulnerableTimer = 0; // Invulnerability after getting hit
+
+        // Player projectiles
+        let playerProjectiles = [];
+
+        // Particle effects
+        let particles = [];
+
+        // Shooting - FAST and ACTION-PACKED!
+        let shootCooldown = 0;
+        const SHOOT_RATE = 5; // Frames between shots - RAPID FIRE!
+
+        // Mouse movement option
+        let useMouseMovement = false;
+        let mouseX = 400;
+        let mouseY = 500;
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+
+            // Character selection hover
+            if (!characterSelected) {
+                const boxWidth = 220;
+                const boxHeight = 180;
+                const spacing = 40;
+                const totalWidth = CHARACTER_LIST.length * boxWidth + (CHARACTER_LIST.length - 1) * spacing;
+                const startX = (canvas.width - totalWidth) / 2;
+                const startY = 280;
+
+                hoveredCharacterIndex = -1;
+                CHARACTER_LIST.forEach((char, index) => {
+                    const x = startX + index * (boxWidth + spacing);
+                    const y = startY;
+
+                    if (mx >= x && mx <= x + boxWidth &&
+                        my >= y && my <= y + boxHeight) {
+                        hoveredCharacterIndex = index;
+                    }
+                });
+                canvas.style.cursor = hoveredCharacterIndex >= 0 ? 'pointer' : 'default';
+                return;
+            }
+
+            // Mode selection hover
+            if (characterSelected && !gameModeSelected) {
+                hoveredButton = null;
+
+                // Adventure button
+                const adventureBtn = { x: canvas.width / 2 - 350, y: 350, width: 300, height: 100 };
+                if (mx >= adventureBtn.x && mx <= adventureBtn.x + adventureBtn.width &&
+                    my >= adventureBtn.y && my <= adventureBtn.y + adventureBtn.height) {
+                    hoveredButton = 'adventure';
+                }
+
+                // Practice button
+                const practiceBtn = { x: canvas.width / 2 + 50, y: 350, width: 300, height: 100 };
+                if (mx >= practiceBtn.x && mx <= practiceBtn.x + practiceBtn.width &&
+                    my >= practiceBtn.y && my <= practiceBtn.y + practiceBtn.height) {
+                    hoveredButton = 'practice';
+                }
+
+                canvas.style.cursor = hoveredButton ? 'pointer' : 'default';
+                return;
+            }
+
+            // Practice museum button hover
+            if (isPracticeMode && gameStarted && currentDimension.spawnButtons) {
+                let overButton = false;
+                currentDimension.spawnButtons.forEach(button => {
+                    if (mx >= button.x && mx <= button.x + button.width &&
+                        my >= button.y && my <= button.y + button.height) {
+                        overButton = true;
+                    }
+                });
+                canvas.style.cursor = overButton ? 'pointer' : 'default';
+            }
+
+            if (!useMouseMovement) return;
+            mouseX = mx;
+            mouseY = my;
+        });
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // Character selection
+            if (!characterSelected) {
+                // Check if clicked on a character
+                const boxWidth = 220;
+                const boxHeight = 180;
+                const spacing = 40;
+                const totalWidth = CHARACTER_LIST.length * boxWidth + (CHARACTER_LIST.length - 1) * spacing;
+                const startX = (canvas.width - totalWidth) / 2;
+                const startY = 280;
+
+                CHARACTER_LIST.forEach((char, index) => {
+                    const x = startX + index * (boxWidth + spacing);
+                    const y = startY;
+
+                    if (clickX >= x && clickX <= x + boxWidth &&
+                        clickY >= y && clickY <= y + boxHeight) {
+                        selectedCharacter = char;
+                        characterSelected = true;
+                        player.setCharacterType(char);
+                    }
+                });
+                return;
+            }
+
+            // Mode selection (Adventure vs Practice)
+            if (characterSelected && !gameModeSelected) {
+                // Adventure button
+                const adventureBtn = { x: canvas.width / 2 - 350, y: 350, width: 300, height: 100 };
+                if (clickX >= adventureBtn.x && clickX <= adventureBtn.x + adventureBtn.width &&
+                    clickY >= adventureBtn.y && clickY <= adventureBtn.y + adventureBtn.height) {
+                    gameModeSelected = true;
+                    isPracticeMode = false;
+                    return;
+                }
+
+                // Practice button
+                const practiceBtn = { x: canvas.width / 2 + 50, y: 350, width: 300, height: 100 };
+                if (clickX >= practiceBtn.x && clickX <= practiceBtn.x + practiceBtn.width &&
+                    clickY >= practiceBtn.y && clickY <= practiceBtn.y + practiceBtn.height) {
+                    gameModeSelected = true;
+                    isPracticeMode = true;
+                    gameStarted = true; // Auto-start practice mode
+
+                    // Give player ALL weapons in practice mode!
+                    player.weapon = new IceShooter();
+                    player.inventory = [
+                        new IceShooter(),
+                        new FireShooter(),
+                        new GiantSword(),
+                        new BigBomb()
+                    ];
+                    currentWeaponIndex = 0;
+
+                    // Full health and unlimited lives in practice!
+                    playerHealth = MAX_HEALTH;
+                    playerLives = 999;
+
+                    // Switch to practice museum
+                    const practiceMuseum = new PracticeMuseumDimension();
+                    dimensionManager.dimensions = [practiceMuseum];
+                    dimensionManager.currentDimensionIndex = 0;
+                    currentDimension = practiceMuseum;
+                    currentDimension.onEnter(engine.state);
+                    return;
+                }
+                return;
+            }
+
+            // Practice museum button clicks
+            if (isPracticeMode && gameStarted && currentDimension.handleClick) {
+                currentDimension.handleClick(clickX, clickY);
+                return;
+            }
+
+            useMouseMovement = true; // Click to enable mouse movement
+        });
+
+        // Keyboard input
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            // Press M to toggle mouse movement
+            if (e.key === 'm' || e.key === 'M') {
+                useMouseMovement = !useMouseMovement;
+                return;
+            }
+
+            // Using arrow keys disables mouse movement
+            if (e.key.startsWith('Arrow')) {
+                useMouseMovement = false;
+            }
+            keys[e.key] = true;
+
+            // Math dimension needs keyboard input
+            if (currentDimension && currentDimension.handleKeyPress) {
+                currentDimension.handleKeyPress(e.key);
+                if (e.key >= '0' && e.key <= '9' || e.key === 'Backspace' || e.key === 'Enter') {
+                    e.preventDefault();
+                }
+            }
+
+            if (e.key === ' ') {
+                e.preventDefault();
+
+                // Start game with spacebar
+                if (!gameStarted) {
+                    gameStarted = true;
+                }
+            }
+
+            // Switch weapons with number keys (only if not in math dimension)
+            if (!currentDimension || !currentDimension.handleKeyPress) {
+                if (e.key >= '1' && e.key <= '4') {
+                    const index = parseInt(e.key) - 1;
+                    if (index < player.inventory.length) {
+                        currentWeaponIndex = index;
+                        player.weapon = player.inventory[currentWeaponIndex];
+                    }
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Create stars
+        const stars = [];
+        for (let i = 0; i < 100; i++) {
+            stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2,
+                speed: Math.random() * 2 + 1
+            });
+        }
+
+        // Game loop
+        let lastTime = 0;
+        function gameLoop(currentTime) {
+            const deltaTime = Math.min((currentTime - lastTime) / 16.67, 2); // Normalize to 60fps, cap at 2x
+            lastTime = currentTime;
+
+            // Character selection screen
+            if (!characterSelected) {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw stars
+                stars.forEach(star => {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(star.x, star.y, star.size, star.size);
+                });
+
+                // Title
+                ctx.fillStyle = '#00ff00';
+                ctx.font = 'bold 48px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText("CHOOSE YOUR CHARACTER", canvas.width / 2, 120);
+
+                ctx.fillStyle = '#ffff00';
+                ctx.font = '24px Courier New';
+                ctx.fillText('Click to select!', canvas.width / 2, 180);
+
+                // Draw character options
+                const boxWidth = 220;
+                const boxHeight = 180;
+                const spacing = 40;
+                const totalWidth = CHARACTER_LIST.length * boxWidth + (CHARACTER_LIST.length - 1) * spacing;
+                const startX = (canvas.width - totalWidth) / 2;
+                const startY = 280;
+
+                CHARACTER_LIST.forEach((char, index) => {
+                    const x = startX + index * (boxWidth + spacing);
+                    const y = startY;
+                    const isHovered = hoveredCharacterIndex === index;
+
+                    // Box background
+                    ctx.fillStyle = isHovered ? '#333' : '#222';
+                    ctx.fillRect(x, y, boxWidth, boxHeight);
+
+                    // Border
+                    ctx.strokeStyle = isHovered ? '#ffff00' : char.color;
+                    ctx.lineWidth = isHovered ? 4 : 2;
+                    ctx.strokeRect(x, y, boxWidth, boxHeight);
+
+                    // Character preview (centered and scaled)
+                    const previewSize = 80;
+                    const previewX = x + (boxWidth - previewSize) / 2;
+                    const previewY = y + 30;
+                    char.render(ctx, previewX, previewY, previewSize, previewSize);
+
+                    // Character name
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 20px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(char.name, x + boxWidth / 2, y + boxHeight - 20);
+                });
+
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            // Mode selection screen
+            if (characterSelected && !gameModeSelected) {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw stars
+                stars.forEach(star => {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(star.x, star.y, star.size, star.size);
+                });
+
+                // Title
+                ctx.fillStyle = '#00ff00';
+                ctx.font = 'bold 48px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText("CHOOSE YOUR MODE", canvas.width / 2, 150);
+
+                // Character preview
+                player.x = (canvas.width - player.width) / 2;
+                player.y = 200;
+                player.render(ctx);
+
+                // Adventure button
+                const adventureBtn = { x: canvas.width / 2 - 350, y: 350, width: 300, height: 100 };
+                const adventureHovered = hoveredButton === 'adventure';
+                ctx.fillStyle = adventureHovered ? '#00aa00' : '#00ff00';
+                ctx.fillRect(adventureBtn.x, adventureBtn.y, adventureBtn.width, adventureBtn.height);
+                ctx.strokeStyle = adventureHovered ? '#ffff00' : '#fff';
+                ctx.lineWidth = adventureHovered ? 4 : 2;
+                ctx.strokeRect(adventureBtn.x, adventureBtn.y, adventureBtn.width, adventureBtn.height);
+
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 32px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('🚀 START', adventureBtn.x + adventureBtn.width / 2, adventureBtn.y + 50);
+                ctx.font = '20px Courier New';
+                ctx.fillText('ADVENTURE', adventureBtn.x + adventureBtn.width / 2, adventureBtn.y + 80);
+
+                // Practice button
+                const practiceBtn = { x: canvas.width / 2 + 50, y: 350, width: 300, height: 100 };
+                const practiceHovered = hoveredButton === 'practice';
+                ctx.fillStyle = practiceHovered ? '#aa00aa' : '#cc00ff';
+                ctx.fillRect(practiceBtn.x, practiceBtn.y, practiceBtn.width, practiceBtn.height);
+                ctx.strokeStyle = practiceHovered ? '#ffff00' : '#fff';
+                ctx.lineWidth = practiceHovered ? 4 : 2;
+                ctx.strokeRect(practiceBtn.x, practiceBtn.y, practiceBtn.width, practiceBtn.height);
+
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 32px Courier New';
+                ctx.fillText('⚔️ PRACTICE', practiceBtn.x + practiceBtn.width / 2, practiceBtn.y + 50);
+                ctx.font = '20px Courier New';
+                ctx.fillText('MUSEUM', practiceBtn.x + practiceBtn.width / 2, practiceBtn.y + 80);
+
+                // Instructions
+                ctx.fillStyle = '#fff';
+                ctx.font = '18px Courier New';
+                ctx.fillText('Start Adventure: Full game with bosses and puzzles', canvas.width / 2, 500);
+                ctx.fillText('Practice Museum: Spawn enemies and test all weapons', canvas.width / 2, 530);
+
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            // Title screen (after mode selected, if adventure mode)
+            if (!gameStarted && !isPracticeMode) {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw stars
+                stars.forEach(star => {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(star.x, star.y, star.size, star.size);
+                });
+
+                // Title
+                ctx.fillStyle = '#00ff00';
+                ctx.font = 'bold 56px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText("EZRA'S", canvas.width / 2, 180);
+                ctx.fillText("SPACE ADVENTURE", canvas.width / 2, 250);
+
+                // Character preview
+                player.x = (canvas.width - player.width) / 2;
+                player.y = 300;
+                player.render(ctx);
+
+                // Instructions
+                ctx.fillStyle = '#ffff00';
+                ctx.font = '28px Courier New';
+                ctx.fillText('Press SPACEBAR to Start!', canvas.width / 2, 500);
+
+                ctx.fillStyle = '#fff';
+                ctx.font = '18px Courier New';
+                ctx.fillText('Arrow Keys = Move | Space = Shoot | 1-4 = Switch Weapons', canvas.width / 2, 570);
+
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            // Handle player input
+            let vx = 0, vy = 0;
+
+            if (useMouseMovement) {
+                // Mouse movement - move towards mouse position
+                const dx = mouseX - player.x;
+                const dy = mouseY - player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > 5) { // Dead zone
+                    vx = (dx / distance) * player.speed;
+                    vy = (dy / distance) * player.speed;
+                }
+            } else {
+                // Keyboard movement
+                if (keys['ArrowLeft']) vx = -player.speed;
+                if (keys['ArrowRight']) vx = player.speed;
+                if (keys['ArrowUp']) vy = -player.speed;
+                if (keys['ArrowDown']) vy = player.speed;
+            }
+
+            player.setVelocity(vx, vy);
+
+            // SHOOTING SYSTEM
+            // Spacebar = shoot up | WASD = shoot in that direction (no spacebar needed!)
+            let shouldShoot = false;
+            let shootDirX = 0;
+            let shootDirY = 0;
+
+            // Check for spacebar (shoots straight up)
+            if (keys[' ']) {
+                shouldShoot = true;
+                shootDirX = 0;
+                shootDirY = -1; // Up
+            }
+
+            // Check for WASD keys (shoot in those directions)
+            const wPressed = keys['w'] || keys['W'];
+            const aPressed = keys['a'] || keys['A'];
+            const sPressed = keys['s'] || keys['S'];
+            const dPressed = keys['d'] || keys['D'];
+
+            if (wPressed || aPressed || sPressed || dPressed) {
+                shouldShoot = true;
+                shootDirX = 0;
+                shootDirY = 0;
+
+                if (wPressed) shootDirY = -1;  // Up
+                if (sPressed) shootDirY = 1;   // Down
+                if (aPressed) shootDirX = -1;  // Left
+                if (dPressed) shootDirX = 1;   // Right
+            }
+
+            // Fire weapon if any shoot key is pressed
+            if (shouldShoot && shootCooldown <= 0 && player.weapon) {
+                const newProjectiles = player.weapon.fire(player, engine.state.entities);
+
+                // Apply directional shooting to projectiles
+                newProjectiles.forEach(proj => {
+                    if (proj.vx !== undefined && proj.vy !== undefined) {
+                        // Calculate original speed
+                        const speed = Math.sqrt(proj.vx * proj.vx + proj.vy * proj.vy);
+
+                        // Normalize direction and apply speed
+                        const dirLength = Math.sqrt(shootDirX * shootDirX + shootDirY * shootDirY);
+                        if (dirLength > 0) {
+                            proj.vx = (shootDirX / dirLength) * speed;
+                            proj.vy = (shootDirY / dirLength) * speed;
+                        }
+                    }
+                });
+
+                playerProjectiles.push(...newProjectiles);
+                shootCooldown = SHOOT_RATE;
+            }
+            if (shootCooldown > 0) shootCooldown -= deltaTime;
+
+            // Constrain player to canvas
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+            if (player.y < 0) player.y = 0;
+            if (player.y > canvas.height - player.height) player.y = canvas.height - player.height;
+
+            // Update engine
+            engine.update(deltaTime);
+
+            // Update current dimension (pass player for chasing enemy)
+            currentDimension.update(deltaTime, engine.state, player);
+
+            // Update player projectiles
+            playerProjectiles = playerProjectiles.filter(p => {
+                p.update(deltaTime);
+                return p.active;
+            });
+
+            // Update particles
+            particles = particles.filter(p => {
+                p.update(deltaTime);
+                return p.active;
+            });
+
+            // Collision detection - player projectiles vs boss
+            if (currentDimension.type === 'boss' && currentDimension.boss && !currentDimension.boss.defeated) {
+                playerProjectiles.forEach(proj => {
+                    if (proj.active && proj.collidesWith(currentDimension.boss)) {
+                        const damageDealt = currentDimension.boss.takeDamage(proj.damage);
+                        proj.destroy();
+
+                        if (damageDealt) {
+                            // Damage dealt - normal hit effect
+                            engine.state.score += 10;
+                            particles.push(...createHitEffect(proj.x + proj.width / 2, proj.y + proj.height / 2, proj.color));
+                        } else {
+                            // Shield blocked! Show cyan shield effect
+                            particles.push(...createHitEffect(proj.x + proj.width / 2, proj.y + proj.height / 2, '#00ffff'));
+                        }
+
+                        // Boss defeated explosion!
+                        if (currentDimension.boss.defeated) {
+                            particles.push(...createExplosion(
+                                currentDimension.boss.x + currentDimension.boss.width / 2,
+                                currentDimension.boss.y + currentDimension.boss.height / 2,
+                                currentDimension.boss.color,
+                                40
+                            ));
+                        }
+                    }
+                });
+            }
+
+            // Collision detection - practice museum bosses
+            if (isPracticeMode && currentDimension.getBosses) {
+                const practiceBosses = currentDimension.getBosses();
+                practiceBosses.forEach(boss => {
+                    if (boss && !boss.defeated) {
+                        playerProjectiles.forEach(proj => {
+                            if (proj.active && proj.collidesWith(boss)) {
+                                const damageDealt = boss.takeDamage(proj.damage);
+                                proj.destroy();
+
+                                if (damageDealt) {
+                                    particles.push(...createHitEffect(proj.x + proj.width / 2, proj.y + proj.height / 2, proj.color));
+                                } else {
+                                    particles.push(...createHitEffect(proj.x + proj.width / 2, proj.y + proj.height / 2, '#00ffff'));
+                                }
+
+                                if (boss.defeated) {
+                                    particles.push(...createExplosion(
+                                        boss.x + boss.width / 2,
+                                        boss.y + boss.height / 2,
+                                        boss.color,
+                                        40
+                                    ));
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Update invulnerability timer
+            if (invulnerableTimer > 0) {
+                invulnerableTimer -= deltaTime;
+            }
+
+            // Collision detection - enemy projectiles vs player
+            const enemyProjectiles = currentDimension.getEnemyProjectiles ? currentDimension.getEnemyProjectiles() : [];
+            enemyProjectiles.forEach(proj => {
+                if (proj.active && proj.collidesWith(player) && invulnerableTimer <= 0) {
+                    player.removePowerup();
+                    proj.destroy();
+
+                    // Take damage!
+                    playerHealth -= 20;
+                    invulnerableTimer = 60; // 1 second invulnerability
+
+                    if (playerHealth <= 0) {
+                        playerLives--;
+                        if (playerLives <= 0) {
+                            // GAME OVER - restart entire game!
+                            location.reload();
+                        } else {
+                            // Restart current dimension
+                            playerHealth = MAX_HEALTH;
+                            currentDimension.onEnter(engine.state);
+                            playerProjectiles = [];
+                            invulnerableTimer = 120; // 2 seconds invulnerability after respawn
+                        }
+                    }
+                }
+            });
+
+            // Collision detection - chasing enemies vs player
+            const chasingEnemies = currentDimension.getChasingEnemies ? currentDimension.getChasingEnemies() : [];
+            chasingEnemies.forEach(alien => {
+                if (alien && alien.collidesWith(player) && invulnerableTimer <= 0) {
+                    player.removePowerup();
+
+                    // Take damage!
+                    playerHealth -= 15;
+                    invulnerableTimer = 60; // 1 second invulnerability
+
+                    if (playerHealth <= 0) {
+                        playerLives--;
+                        if (playerLives <= 0) {
+                            // GAME OVER - restart entire game!
+                            location.reload();
+                        } else {
+                            // Restart current dimension
+                            playerHealth = MAX_HEALTH;
+                            currentDimension.onEnter(engine.state);
+                            playerProjectiles = [];
+                            invulnerableTimer = 120; // 2 seconds invulnerability after respawn
+                        }
+                    }
+
+                    // Push player away
+                    const dx = player.x - alien.x;
+                    const dy = player.y - alien.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance > 0) {
+                        player.x += (dx / distance) * 20;
+                        player.y += (dy / distance) * 20;
+                    }
+                }
+            });
+
+            // Collision detection - player projectiles vs chasing enemies (including practice mode!)
+            chasingEnemies.forEach(enemy => {
+                if (enemy && enemy.active) {
+                    playerProjectiles.forEach(proj => {
+                        if (proj.active && proj.collidesWith(enemy)) {
+                            enemy.destroy();
+                            proj.destroy();
+
+                            // Explosion effect!
+                            particles.push(...createExplosion(
+                                enemy.x + enemy.width / 2,
+                                enemy.y + enemy.height / 2,
+                                enemy.color,
+                                20
+                            ));
+
+                            engine.state.score += 50;
+                        }
+                    });
+                }
+            });
+
+            // Collision detection - power-ups
+            const powerups = currentDimension.getPowerUps ? currentDimension.getPowerUps() : [];
+            powerups.forEach(powerup => {
+                if (powerup.active && powerup.collidesWith(player)) {
+                    player.addPowerup();
+                    powerup.collect();
+                    if (currentDimension.collectPowerup) {
+                        currentDimension.collectPowerup();
+                    }
+                    engine.state.score += 50;
+
+                    // Sparkle effect!
+                    particles.push(...createSparkle(powerup.x + powerup.width / 2, powerup.y + powerup.height / 2));
+                }
+            });
+
+            // Collision detection - damage traps
+            const traps = currentDimension.getTraps ? currentDimension.getTraps() : [];
+            traps.forEach(trap => {
+                if (trap.active && trap.collidesWith(player)) {
+                    // OUCH! Lose power-ups!
+                    player.removePowerup();
+                    player.removePowerup();
+                    player.removePowerup(); // Lose 3 power-ups!
+                    trap.trigger();
+
+                    // Red explosion effect!
+                    particles.push(...createHitEffect(trap.x + trap.width / 2, trap.y + trap.height / 2, '#ff0000'));
+                }
+            });
+
+            // Check for dimension completion
+            if (currentDimension.completed && dimensionManager.canAdvance()) {
+                dimensionManager.nextDimension();
+                currentDimension = dimensionManager.getCurrentDimension();
+                if (currentDimension) {
+                    currentDimension.onEnter(engine.state);
+                    playerProjectiles = []; // Clear projectiles
+                } else {
+                    // No more dimensions - YOU WIN!
+                    gameWon = true;
+                }
+            } else if (currentDimension.completed && !dimensionManager.canAdvance()) {
+                // Final dimension completed!
+                gameWon = true;
+            }
+
+            // Update stars
+            stars.forEach(star => {
+                star.y += star.speed * deltaTime;
+                if (star.y > canvas.height) {
+                    star.y = 0;
+                    star.x = Math.random() * canvas.width;
+                }
+            });
+
+            // === RENDER ===
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw stars
+            stars.forEach(star => {
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(star.x, star.y, star.size, star.size);
+            });
+
+            // Render current dimension
+            if (currentDimension) {
+                currentDimension.render(ctx);
+            }
+
+            // Draw player projectiles
+            playerProjectiles.forEach(p => p.render(ctx));
+
+            // Draw particles
+            particles.forEach(p => p.render(ctx));
+
+            // Draw player (flash when invulnerable)
+            if (invulnerableTimer <= 0 || Math.floor(invulnerableTimer / 5) % 2 === 0) {
+                player.render(ctx);
+            }
+
+            // Player health bar (top left)
+            ctx.fillStyle = '#333';
+            ctx.fillRect(10, 10, 204, 24);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(10, 10, 204, 24);
+
+            // Health bar fill
+            const healthPercent = playerHealth / MAX_HEALTH;
+            ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
+            ctx.fillRect(12, 12, 200 * healthPercent, 20);
+
+            // Health text
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px Courier New';
+            ctx.textAlign = 'center';
+            ctx.fillText(`HP: ${Math.max(0, Math.floor(playerHealth))}`, 112, 27);
+
+            // Lives indicator
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Courier New';
+            ctx.fillText(`Lives: ${'❤️'.repeat(playerLives)}`, 10, 55);
+
+            // WEAPON SELECTOR - Big and visible!
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 16px Courier New';
+            ctx.fillText('WEAPONS:', 10, 95);
+
+            // Draw weapon boxes
+            const weaponBoxSize = 70;
+            const weaponBoxY = 105;
+            player.inventory.forEach((weapon, index) => {
+                const x = 10 + index * (weaponBoxSize + 10);
+                const isSelected = currentWeaponIndex === index;
+
+                // Box background
+                ctx.fillStyle = isSelected ? '#ffff00' : '#333';
+                ctx.fillRect(x, weaponBoxY, weaponBoxSize, weaponBoxSize);
+
+                // Border
+                ctx.strokeStyle = isSelected ? '#ff00ff' : '#666';
+                ctx.lineWidth = isSelected ? 4 : 2;
+                ctx.strokeRect(x, weaponBoxY, weaponBoxSize, weaponBoxSize);
+
+                // Weapon icon/color
+                ctx.fillStyle = weapon.color || '#fff';
+                if (weapon.name.includes('Ice')) {
+                    ctx.fillText('❄️', x + 22, weaponBoxY + 35);
+                } else if (weapon.name.includes('Fire')) {
+                    ctx.fillText('🔥', x + 22, weaponBoxY + 35);
+                } else if (weapon.name.includes('Sword')) {
+                    ctx.fillText('⚔️', x + 22, weaponBoxY + 35);
+                } else if (weapon.name.includes('Bomb')) {
+                    ctx.fillText('💣', x + 22, weaponBoxY + 35);
+                }
+
+                // Weapon number
+                ctx.fillStyle = isSelected ? '#000' : '#fff';
+                ctx.font = 'bold 14px Courier New';
+                ctx.fillText((index + 1).toString(), x + 5, weaponBoxY + 15);
+
+                // Weapon name (abbreviated)
+                ctx.font = '10px Courier New';
+                const shortName = weapon.name.split(' ')[0];
+                ctx.fillText(shortName, x + 3, weaponBoxY + weaponBoxSize - 5);
+            });
+
+            // Movement mode indicator
+            ctx.fillStyle = useMouseMovement ? '#00ff00' : '#fff';
+            ctx.font = '12px Courier New';
+            ctx.fillText(`${useMouseMovement ? 'MOUSE' : 'KEYBOARD'} mode (M to toggle)`, 10, 200);
+
+            // Directional shooting hint
+            ctx.fillStyle = '#ffaa00';
+            ctx.font = 'bold 12px Courier New';
+            ctx.fillText('Arrow Keys = Move', 10, 220);
+            ctx.fillText('WASD = Shoot Direction', 10, 235);
+            ctx.fillText('Space = Shoot Up', 10, 250);
+
+            // Victory screen - EPIC!
+            if (gameWon) {
+                // Dark overlay
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Animated stars around victory text
+                const victoryTime = Date.now() / 100;
+                for (let i = 0; i < 20; i++) {
+                    const angle = (i / 20) * Math.PI * 2 + victoryTime * 0.1;
+                    const radius = 150 + Math.sin(victoryTime * 0.2 + i) * 20;
+                    const x = 400 + Math.cos(angle) * radius;
+                    const y = 200 + Math.sin(angle) * radius;
+                    ctx.fillStyle = `hsl(${(i * 18 + victoryTime * 10) % 360}, 100%, 50%)`;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Main victory text
+                ctx.fillStyle = '#00ff00';
+                ctx.font = 'bold 72px Courier New';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = '#00ff00';
+                ctx.shadowBlur = 20;
+                ctx.fillText('🎉 YOU DID IT! 🎉', 400, 200);
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = '#ffff00';
+                ctx.font = 'bold 40px Courier New';
+                ctx.fillText('The Dragon is Defeated!', 400, 270);
+
+                // Robot victory pose
+                ctx.save();
+                ctx.translate(400, 340);
+                ctx.scale(2, 2);
+                player.render(ctx);
+                ctx.restore();
+
+                // Stats
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 28px Courier New';
+                ctx.fillText(`Final Score: ${engine.state.score}`, 400, 450);
+                ctx.fillText(`Power-Ups Collected: ${player.powerups}`, 400, 485);
+
+                // Dimensions completed
+                ctx.font = '20px Courier New';
+                ctx.fillStyle = '#00ffaa';
+                ctx.fillText('✓ Completed All 5 Dimensions!', 400, 520);
+
+                // Play again
+                ctx.font = 'bold 22px Courier New';
+                ctx.fillStyle = '#ffff00';
+                ctx.fillText('Press F5 to play again!', 400, 565);
+            }
+
+            // Update UI
+            document.getElementById('dimension').textContent = currentDimension ? currentDimension.number : '?';
+            document.getElementById('powerups').textContent = player.powerups;
+            document.getElementById('score').textContent = engine.state.score;
+            document.getElementById('message').textContent = currentDimension ? currentDimension.name : 'Loading...';
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start game
+        engine.start();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
