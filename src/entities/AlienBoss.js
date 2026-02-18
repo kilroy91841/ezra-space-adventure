@@ -3,11 +3,11 @@ import { Projectile } from './Projectile.js';
 
 export class AlienBoss extends Boss {
     constructor(x, y) {
-        super(x, y, 80, 60, 'Alien', 30); // Easiest boss
+        super(x, y, 80, 60, 'Alien', 80); // Increased from 30 to 80
         this.color = '#00ff00';
-        this.shootInterval = 120; // Slower shooting
+        this.shootInterval = 70; // Faster shooting (was 120)
         this.isEvil = true;
-        this.speed = 1.5; // Slower movement
+        this.speed = 2.5; // Faster movement (was 1.5)
     }
 
     shoot() {

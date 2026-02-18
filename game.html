@@ -104,9 +104,11 @@
         let gameOver = false;
         let gameStarted = false;
 
-        // Health system: track hits when you have 0 power-ups
-        let hitsWithZeroPowerups = 0;
-        const MAX_HITS = 5;
+        // Player health and lives system
+        let playerHealth = 100;
+        const MAX_HEALTH = 100;
+        let playerLives = 3;
+        let invulnerableTimer = 0; // Invulnerability after getting hit
 
         // Player projectiles
         let playerProjectiles = [];
@@ -314,55 +316,72 @@
                 });
             }
 
+            // Update invulnerability timer
+            if (invulnerableTimer > 0) {
+                invulnerableTimer -= deltaTime;
+            }
+
             // Collision detection - enemy projectiles vs player
             const enemyProjectiles = currentDimension.getEnemyProjectiles ? currentDimension.getEnemyProjectiles() : [];
             enemyProjectiles.forEach(proj => {
-                if (proj.active && proj.collidesWith(player)) {
+                if (proj.active && proj.collidesWith(player) && invulnerableTimer <= 0) {
                     player.removePowerup();
                     proj.destroy();
 
-                    // Health system: track hits at 0 power-ups
-                    if (player.powerups === 0) {
-                        hitsWithZeroPowerups++;
-                        if (hitsWithZeroPowerups >= MAX_HITS) {
-                            // RESTART LEVEL!
+                    // Take damage!
+                    playerHealth -= 20;
+                    invulnerableTimer = 60; // 1 second invulnerability
+
+                    if (playerHealth <= 0) {
+                        playerLives--;
+                        if (playerLives <= 0) {
+                            // GAME OVER - restart entire game!
+                            location.reload();
+                        } else {
+                            // Restart current dimension
+                            playerHealth = MAX_HEALTH;
                             currentDimension.onEnter(engine.state);
-                            hitsWithZeroPowerups = 0;
                             playerProjectiles = [];
+                            invulnerableTimer = 120; // 2 seconds invulnerability after respawn
                         }
-                    } else {
-                        hitsWithZeroPowerups = 0; // Reset if you have power-ups
                     }
                 }
             });
 
-            // Collision detection - chasing enemy vs player
-            const chasingEnemy = currentDimension.getChasingEnemy ? currentDimension.getChasingEnemy() : null;
-            if (chasingEnemy && chasingEnemy.collidesWith(player)) {
-                player.removePowerup();
+            // Collision detection - chasing enemies vs player
+            const chasingEnemies = currentDimension.getChasingEnemies ? currentDimension.getChasingEnemies() : [];
+            chasingEnemies.forEach(alien => {
+                if (alien && alien.collidesWith(player) && invulnerableTimer <= 0) {
+                    player.removePowerup();
 
-                // Health system: track hits at 0 power-ups
-                if (player.powerups === 0) {
-                    hitsWithZeroPowerups++;
-                    if (hitsWithZeroPowerups >= MAX_HITS) {
-                        // RESTART LEVEL!
-                        currentDimension.onEnter(engine.state);
-                        hitsWithZeroPowerups = 0;
-                        playerProjectiles = [];
+                    // Take damage!
+                    playerHealth -= 15;
+                    invulnerableTimer = 60; // 1 second invulnerability
+
+                    if (playerHealth <= 0) {
+                        playerLives--;
+                        if (playerLives <= 0) {
+                            // GAME OVER - restart entire game!
+                            location.reload();
+                        } else {
+                            // Restart current dimension
+                            playerHealth = MAX_HEALTH;
+                            currentDimension.onEnter(engine.state);
+                            playerProjectiles = [];
+                            invulnerableTimer = 120; // 2 seconds invulnerability after respawn
+                        }
                     }
-                } else {
-                    hitsWithZeroPowerups = 0; // Reset if you have power-ups
-                }
 
-                // Push player away
-                const dx = player.x - chasingEnemy.x;
-                const dy = player.y - chasingEnemy.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance > 0) {
-                    player.x += (dx / distance) * 20;
-                    player.y += (dy / distance) * 20;
+                    // Push player away
+                    const dx = player.x - alien.x;
+                    const dy = player.y - alien.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance > 0) {
+                        player.x += (dx / distance) * 20;
+                        player.y += (dy / distance) * 20;
+                    }
                 }
-            }
+            });
 
             // Collision detection - power-ups
             const powerups = currentDimension.getPowerUps ? currentDimension.getPowerUps() : [];
@@ -441,34 +460,45 @@
             // Draw particles
             particles.forEach(p => p.render(ctx));
 
-            // Draw player
-            player.render(ctx);
+            // Draw player (flash when invulnerable)
+            if (invulnerableTimer <= 0 || Math.floor(invulnerableTimer / 5) % 2 === 0) {
+                player.render(ctx);
+            }
 
-            // Draw weapon indicator
+            // Player health bar (top left)
+            ctx.fillStyle = '#333';
+            ctx.fillRect(10, 10, 204, 24);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(10, 10, 204, 24);
+
+            // Health bar fill
+            const healthPercent = playerHealth / MAX_HEALTH;
+            ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
+            ctx.fillRect(12, 12, 200 * healthPercent, 20);
+
+            // Health text
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px Courier New';
+            ctx.textAlign = 'center';
+            ctx.fillText(`HP: ${Math.max(0, Math.floor(playerHealth))}`, 112, 27);
+
+            // Lives indicator
+            ctx.textAlign = 'left';
             ctx.fillStyle = '#fff';
             ctx.font = '16px Courier New';
-            ctx.textAlign = 'left';
-            ctx.fillText(`Weapon: ${player.weapon ? player.weapon.name : 'None'}`, 10, 30);
-            ctx.font = '12px Courier New';
-            ctx.fillText('(Press 1-4 to switch)', 10, 50);
+            ctx.fillText(`Lives: ${'❤️'.repeat(playerLives)}`, 10, 55);
+
+            // Weapon indicator
+            ctx.fillText(`Weapon: ${player.weapon ? player.weapon.name : 'None'}`, 10, 85);
+            ctx.font = '10px Courier New';
+            ctx.fillStyle = '#888';
+            ctx.fillText('(Press 1-4 to switch)', 10, 100);
 
             // Movement mode indicator
             ctx.fillStyle = useMouseMovement ? '#00ff00' : '#fff';
-            ctx.font = '14px Courier New';
-            ctx.fillText(`Move: ${useMouseMovement ? 'MOUSE' : 'KEYBOARD'}`, 10, 75);
-            ctx.font = '10px Courier New';
-            ctx.fillStyle = '#888';
-            ctx.fillText('(Press M to toggle)', 10, 90);
-
-            // Health indicator (when at 0 power-ups)
-            if (player.powerups === 0 && hitsWithZeroPowerups > 0) {
-                ctx.fillStyle = '#ff0000';
-                ctx.font = 'bold 20px Courier New';
-                ctx.textAlign = 'center';
-                ctx.fillText(`⚠️ HITS: ${hitsWithZeroPowerups}/${MAX_HITS} ⚠️`, 400, 580);
-                ctx.font = '14px Courier New';
-                ctx.fillText('Get power-ups or restart level!', 400, 595);
-            }
+            ctx.font = '12px Courier New';
+            ctx.fillText(`${useMouseMovement ? 'MOUSE' : 'KEYBOARD'} mode (M to toggle)`, 10, 120);
 
             // Victory screen - EPIC!
             if (gameWon) {

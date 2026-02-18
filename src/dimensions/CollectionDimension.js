@@ -8,7 +8,7 @@ export class CollectionDimension extends Dimension {
         super(number, DimensionType.PUZZLE, name);
         this.powerups = [];
         this.traps = [];
-        this.chasingEnemy = null;
+        this.chasingEnemies = []; // Now multiple enemies!
         this.collectedCount = 0;
         this.totalPowerups = 0;
         this.timeInDimension = 0;
@@ -17,26 +17,14 @@ export class CollectionDimension extends Dimension {
     onEnter(gameState) {
         this.powerups = [];
         this.traps = [];
+        this.chasingEnemies = []; // Start with NO aliens!
         this.collectedCount = 0;
         this.timeInDimension = 0;
 
-        // Create chasing alien!
-        this.chasingEnemy = new ChasingEnemy(400, 50);
-
-        // Create power-ups in REALLY hidden places!
-        // Far corners (very hidden)
-        this.powerups.push(new PowerUp(10, 10, true));
-        this.powerups.push(new PowerUp(780, 10, true));
-        this.powerups.push(new PowerUp(10, 580, true));
-        this.powerups.push(new PowerUp(780, 580, true));
-
-        // Hidden along edges
-        this.powerups.push(new PowerUp(5, 300, true));
-        this.powerups.push(new PowerUp(795, 300, true));
-        this.powerups.push(new PowerUp(400, 5, true));
-
-        // One in a really weird spot
-        this.powerups.push(new PowerUp(650, 120, true));
+        // Create initial power-ups with EXPIRATION!
+        this.spawnPowerup();
+        this.spawnPowerup();
+        this.spawnPowerup();
 
         // DAMAGE TRAPS! (look like power-ups but hurt you!)
         this.traps.push(new DamageTrap(400, 300)); // Center trap
@@ -44,7 +32,27 @@ export class CollectionDimension extends Dimension {
         this.traps.push(new DamageTrap(600, 400));
         this.traps.push(new DamageTrap(300, 450));
 
-        this.totalPowerups = this.powerups.length;
+        this.totalPowerups = 8; // Need to collect 8 to complete
+    }
+
+    spawnPowerup() {
+        // Spawn in random hidden location with expiration
+        const x = Math.random() * 760 + 20;
+        const y = Math.random() * 560 + 20;
+        this.powerups.push(new PowerUp(x, y, true, true)); // hasExpiration = true
+    }
+
+    spawnAlien() {
+        // Spawn new alien at random edge
+        const edge = Math.floor(Math.random() * 4);
+        let x, y;
+        switch(edge) {
+            case 0: x = Math.random() * 800; y = 0; break; // Top
+            case 1: x = 800; y = Math.random() * 600; break; // Right
+            case 2: x = Math.random() * 800; y = 600; break; // Bottom
+            case 3: x = 0; y = Math.random() * 600; break; // Left
+        }
+        this.chasingEnemies.push(new ChasingEnemy(x, y));
     }
 
     update(deltaTime, gameState, player) {
@@ -53,13 +61,21 @@ export class CollectionDimension extends Dimension {
         // Update power-ups
         this.powerups.forEach(p => p.update(deltaTime));
 
+        // Check for expired power-ups and respawn them
+        const expiredPowerups = this.powerups.filter(p => !p.active && p.expired);
+        expiredPowerups.forEach(() => {
+            this.spawnPowerup(); // Respawn in new location
+        });
+
         // Update traps
         this.traps.forEach(t => t.update(deltaTime));
 
-        // Update chasing alien!
-        if (this.chasingEnemy && player) {
-            this.chasingEnemy.update(deltaTime, player);
-        }
+        // Update all chasing aliens!
+        this.chasingEnemies.forEach(alien => {
+            if (alien && player) {
+                alien.update(deltaTime, player);
+            }
+        });
 
         // Remove collected power-ups and triggered traps
         this.powerups = this.powerups.filter(p => p.active);
@@ -75,10 +91,12 @@ export class CollectionDimension extends Dimension {
     }
 
     render(ctx) {
-        // Render chasing alien
-        if (this.chasingEnemy) {
-            this.chasingEnemy.render(ctx);
-        }
+        // Render all chasing aliens
+        this.chasingEnemies.forEach(alien => {
+            if (alien) {
+                alien.render(ctx);
+            }
+        });
 
         // Render all power-ups
         this.powerups.forEach(p => p.render(ctx));
@@ -117,9 +135,11 @@ export class CollectionDimension extends Dimension {
 
     collectPowerup() {
         this.collectedCount++;
+        // Spawn a new alien each time you collect a power-up!
+        this.spawnAlien();
     }
 
-    getChasingEnemy() {
-        return this.chasingEnemy;
+    getChasingEnemies() {
+        return this.chasingEnemies;
     }
 }

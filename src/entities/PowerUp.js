@@ -1,13 +1,16 @@
 import { Entity } from './Entity.js';
 
 export class PowerUp extends Entity {
-    constructor(x, y, hidden = false) {
+    constructor(x, y, hidden = false, hasExpiration = false) {
         super(x, y, 20, 20);
         this.color = '#ffff00';
         this.collected = false;
         this.hidden = hidden;
         this.pulse = 0; // For animation
         this.floatOffset = 0;
+        this.hasExpiration = hasExpiration;
+        this.lifetime = 600; // 10 seconds (60 fps * 10)
+        this.age = 0;
     }
 
     update(deltaTime) {
@@ -16,12 +19,46 @@ export class PowerUp extends Entity {
 
         // Float up and down
         this.floatOffset = Math.sin(this.pulse) * 3;
+
+        // Expiration countdown
+        if (this.hasExpiration) {
+            this.age += deltaTime;
+            if (this.age >= this.lifetime) {
+                this.expire();
+            }
+        }
+    }
+
+    expire() {
+        // Mark as expired (different from collected)
+        this.expired = true;
+        this.destroy();
+    }
+
+    getTimeLeft() {
+        if (!this.hasExpiration) return null;
+        return Math.max(0, Math.ceil((this.lifetime - this.age) / 60));
     }
 
     render(ctx) {
         if (this.collected) return;
 
         const renderY = this.y + this.floatOffset;
+
+        // Show expiration timer if applicable
+        if (this.hasExpiration) {
+            const timeLeft = this.getTimeLeft();
+            if (timeLeft !== null && timeLeft <= 5) {
+                // Flashing red when about to expire
+                const flash = Math.sin(this.age * 0.5) > 0;
+                if (flash && timeLeft <= 2) {
+                    ctx.fillStyle = '#ff0000';
+                    ctx.font = 'bold 14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(timeLeft, this.x + this.width / 2, renderY - 10);
+                }
+            }
+        }
 
         // Draw with pulsing glow
         const glowSize = 5 + Math.sin(this.pulse) * 2;

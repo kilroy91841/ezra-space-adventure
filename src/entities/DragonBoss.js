@@ -3,10 +3,10 @@ import { Projectile } from './Projectile.js';
 
 export class DragonBoss extends Boss {
     constructor(x, y) {
-        super(x, y, 140, 120, 'Dragon', 100); // REALLY tough!
+        super(x, y, 140, 120, 'Dragon', 200); // REALLY REALLY tough! (was 100)
         this.color = '#ff0000';
-        this.shootInterval = 40; // Fast shooting!
-        this.speed = 2.5; // Faster movement
+        this.shootInterval = 35; // Even faster shooting! (was 40)
+        this.speed = 3; // Faster movement (was 2.5)
         this.phase = 1; // Dragon gets harder in phase 2
     }
 
@@ -16,8 +16,8 @@ export class DragonBoss extends Boss {
         // Phase 2 when health drops below 50%
         if (this.health <= this.maxHealth / 2 && this.phase === 1) {
             this.phase = 2;
-            this.shootInterval = 30; // Even faster!
-            this.speed = 3;
+            this.shootInterval = 25; // SUPER fast! (was 30)
+            this.speed = 4; // Much faster! (was 3)
             this.color = '#ff4400'; // Brighter when angry
         }
     }
@@ -111,22 +111,30 @@ export class DragonBoss extends Boss {
 // Mini Dragon for practice
 export class MiniDragonBoss extends Boss {
     constructor(x, y) {
-        super(x, y, 100, 80, 'Mini Dragon', 50); // Medium difficulty
+        super(x, y, 100, 80, 'Mini Dragon', 100); // Harder! (was 50)
         this.color = '#ff6600';
-        this.shootInterval = 60;
-        this.speed = 2;
+        this.shootInterval = 45; // Faster (was 60)
+        this.speed = 2.5; // Faster (was 2)
     }
 
     shoot() {
         if (this.shootTimer >= this.shootInterval) {
             this.shootTimer = 0;
 
-            // Mini dragon shoots one fireball
+            // Mini dragon shoots TWO fireballs now!
             return [
                 new Projectile(
-                    this.x + this.width / 2 - 4,
+                    this.x + 30,
                     this.y + this.height,
-                    0,
+                    -1,
+                    4,
+                    1,
+                    this.color
+                ),
+                new Projectile(
+                    this.x + this.width - 30,
+                    this.y + this.height,
+                    1,
                     4,
                     1,
                     this.color
