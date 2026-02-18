@@ -7,6 +7,7 @@ export class ChasingEnemy extends Entity {
         this.color = '#00ff00';
         this.speed = 2;
         this.chaseSpeed = 3;
+        this.isAlly = false; // These are enemies, not allies!
     }
 
     update(deltaTime, player) {

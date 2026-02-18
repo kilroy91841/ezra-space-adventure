@@ -835,8 +835,14 @@
                             ));
 
                             engine.state.score += 50;
+
+                            if (debugMode) {
+                                console.log('🎯 Chasing enemy destroyed!');
+                            }
                         }
                     });
+                } else if (enemy && enemy.active && enemy.isAlly && debugMode) {
+                    console.log('⚠️ Skipped ally enemy from damage');
                 }
             });
 
