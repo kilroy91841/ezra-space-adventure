@@ -124,6 +124,9 @@
         const NORMAL_SPEED = 5;
         const BOOSTED_SPEED = 8;
 
+        // Bounce effect from trampoline
+        let bounceVelocityY = 0;
+
         // Player projectiles
         let playerProjectiles = [];
 
@@ -535,6 +538,15 @@
 
             player.setVelocity(vx, vy);
 
+            // Apply bounce effect from trampoline!
+            if (bounceVelocityY !== 0) {
+                player.vy += bounceVelocityY;
+                bounceVelocityY *= 0.95; // Decay the bounce
+                if (Math.abs(bounceVelocityY) < 0.5) {
+                    bounceVelocityY = 0; // Stop when very small
+                }
+            }
+
             // SHOOTING SYSTEM
             // Spacebar = shoot up | WASD = shoot in that direction (no spacebar needed!)
             let shouldShoot = false;
@@ -844,10 +856,11 @@
                         playerHealth -= hazard.damage;
                         invulnerableTimer = 30; // Brief invulnerability
                         particles.push(...createHitEffect(player.x + player.width / 2, player.y + player.height / 2, '#ff4400'));
-                    } else if (hazard.type === 'trampoline') {
-                        // Bounce!
-                        player.vy = -hazard.bounceForce;
+                    } else if (hazard.type === 'trampoline' && player.vy >= 0) {
+                        // Bounce! (only if moving down or stationary)
+                        bounceVelocityY = -hazard.bounceForce;
                         hazard.bounce();
+                        particles.push(...createSparkle(hazard.x + hazard.width / 2, hazard.y));
                     } else if (hazard.type === 'ice') {
                         // Make player slippery!
                         player.vx *= hazard.slipperiness;
