@@ -645,29 +645,6 @@
                 });
             }
 
-            // Collision detection - player projectiles vs chasing enemies (including practice mode!)
-            const chasingEnemies = currentDimension.getChasingEnemies ? currentDimension.getChasingEnemies() : [];
-            chasingEnemies.forEach(enemy => {
-                if (enemy && enemy.active) {
-                    playerProjectiles.forEach(proj => {
-                        if (proj.active && proj.collidesWith(enemy)) {
-                            enemy.destroy();
-                            proj.destroy();
-
-                            // Explosion effect!
-                            particles.push(...createExplosion(
-                                enemy.x + enemy.width / 2,
-                                enemy.y + enemy.height / 2,
-                                enemy.color,
-                                20
-                            ));
-
-                            engine.state.score += 50;
-                        }
-                    });
-                }
-            });
-
             // Update invulnerability timer
             if (invulnerableTimer > 0) {
                 invulnerableTimer -= deltaTime;
@@ -732,6 +709,28 @@
                         player.x += (dx / distance) * 20;
                         player.y += (dy / distance) * 20;
                     }
+                }
+            });
+
+            // Collision detection - player projectiles vs chasing enemies (including practice mode!)
+            chasingEnemies.forEach(enemy => {
+                if (enemy && enemy.active) {
+                    playerProjectiles.forEach(proj => {
+                        if (proj.active && proj.collidesWith(enemy)) {
+                            enemy.destroy();
+                            proj.destroy();
+
+                            // Explosion effect!
+                            particles.push(...createExplosion(
+                                enemy.x + enemy.width / 2,
+                                enemy.y + enemy.height / 2,
+                                enemy.color,
+                                20
+                            ));
+
+                            engine.state.score += 50;
+                        }
+                    });
                 }
             });
 
