@@ -529,9 +529,34 @@
 
             player.setVelocity(vx, vy);
 
-            // RAPID FIRE SHOOTING!
+            // RAPID FIRE SHOOTING with WASD directional control!
             if (keys[' '] && shootCooldown <= 0 && player.weapon) {
                 const newProjectiles = player.weapon.fire(player, engine.state.entities);
+
+                // Check WASD keys for shooting direction
+                let shootDirX = 0;
+                let shootDirY = -1; // Default: shoot up
+
+                if (keys['w'] || keys['W']) shootDirY = -1;
+                if (keys['s'] || keys['S']) shootDirY = 1;
+                if (keys['a'] || keys['A']) shootDirX = -1;
+                if (keys['d'] || keys['D']) shootDirX = 1;
+
+                // Apply directional shooting to projectiles
+                newProjectiles.forEach(proj => {
+                    if (proj.vx !== undefined && proj.vy !== undefined) {
+                        // Calculate original speed
+                        const speed = Math.sqrt(proj.vx * proj.vx + proj.vy * proj.vy);
+
+                        // Normalize direction and apply speed
+                        const dirLength = Math.sqrt(shootDirX * shootDirX + shootDirY * shootDirY);
+                        if (dirLength > 0) {
+                            proj.vx = (shootDirX / dirLength) * speed;
+                            proj.vy = (shootDirY / dirLength) * speed;
+                        }
+                    }
+                });
+
                 playerProjectiles.push(...newProjectiles);
                 shootCooldown = SHOOT_RATE;
             }
@@ -619,6 +644,29 @@
                     }
                 });
             }
+
+            // Collision detection - player projectiles vs chasing enemies (including practice mode!)
+            const chasingEnemies = currentDimension.getChasingEnemies ? currentDimension.getChasingEnemies() : [];
+            chasingEnemies.forEach(enemy => {
+                if (enemy && enemy.active) {
+                    playerProjectiles.forEach(proj => {
+                        if (proj.active && proj.collidesWith(enemy)) {
+                            enemy.destroy();
+                            proj.destroy();
+
+                            // Explosion effect!
+                            particles.push(...createExplosion(
+                                enemy.x + enemy.width / 2,
+                                enemy.y + enemy.height / 2,
+                                enemy.color,
+                                20
+                            ));
+
+                            engine.state.score += 50;
+                        }
+                    });
+                }
+            });
 
             // Update invulnerability timer
             if (invulnerableTimer > 0) {
@@ -841,6 +889,13 @@
             ctx.fillStyle = useMouseMovement ? '#00ff00' : '#fff';
             ctx.font = '12px Courier New';
             ctx.fillText(`${useMouseMovement ? 'MOUSE' : 'KEYBOARD'} mode (M to toggle)`, 10, 200);
+
+            // Directional shooting hint
+            ctx.fillStyle = '#ffaa00';
+            ctx.font = 'bold 12px Courier New';
+            ctx.fillText('Arrow Keys = Move', 10, 220);
+            ctx.fillText('WASD = Aim Direction', 10, 235);
+            ctx.fillText('Space = Shoot', 10, 250);
 
             // Victory screen - EPIC!
             if (gameWon) {
