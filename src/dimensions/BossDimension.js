@@ -20,6 +20,15 @@ export class BossDimension extends Dimension {
         this.boss.active = true;
         this.boss.defeated = false;
         this.boss.health = this.boss.maxHealth;
+
+        // Reset ally status if boss has it (for Alien Boss)
+        if (this.boss.isAlly !== undefined) {
+            this.boss.isAlly = false;
+        }
+        if (this.boss.isEvil !== undefined) {
+            this.boss.isEvil = true;
+        }
+
         this.enemyProjectiles = [];
         this.droppedPowerups = [];
         this.showingVictory = false;

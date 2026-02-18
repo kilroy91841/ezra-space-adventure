@@ -305,16 +305,21 @@
             }
 
             // DEBUG MODE: Number keys to jump to levels
-            if (debugMode && gameStarted && !isPracticeMode && e.key >= '1' && e.key <= '5') {
+            if (debugMode && !isPracticeMode && e.key >= '1' && e.key <= '5') {
                 const levelNum = parseInt(e.key);
+                console.log(`Debug: Attempting to jump to level ${levelNum}. gameStarted=${gameStarted}, isPracticeMode=${isPracticeMode}`);
+
                 if (levelNum <= dimensionManager.dimensions.length) {
                     dimensionManager.currentDimensionIndex = levelNum - 1;
                     currentDimension = dimensionManager.getCurrentDimension();
                     if (currentDimension) {
                         currentDimension.onEnter(engine.state);
                         playerProjectiles = [];
-                        console.log(`Jumped to Level ${levelNum}: ${currentDimension.name}`);
+                        gameStarted = true; // Ensure game is started after jumping
+                        console.log(`✓ Jumped to Level ${levelNum}: ${currentDimension.name}`);
                     }
+                } else {
+                    console.log(`✗ Level ${levelNum} doesn't exist (only ${dimensionManager.dimensions.length} levels)`);
                 }
                 return;
             }
