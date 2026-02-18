@@ -112,6 +112,9 @@
         let isPracticeMode = false;
         let hoveredButton = null;
 
+        // DEBUG MODE
+        let debugMode = false;
+
         // Player health and lives system
         let playerHealth = 100;
         const MAX_HEALTH = 100;
@@ -294,6 +297,36 @@
         // Keyboard input
         const keys = {};
         window.addEventListener('keydown', (e) => {
+            // Press ` (backtick) to toggle DEBUG MODE
+            if (e.key === '`') {
+                debugMode = !debugMode;
+                console.log(`Debug mode: ${debugMode ? 'ON' : 'OFF'}`);
+                return;
+            }
+
+            // DEBUG MODE: Number keys to jump to levels
+            if (debugMode && gameStarted && !isPracticeMode && e.key >= '1' && e.key <= '5') {
+                const levelNum = parseInt(e.key);
+                if (levelNum <= dimensionManager.dimensions.length) {
+                    dimensionManager.currentDimensionIndex = levelNum - 1;
+                    currentDimension = dimensionManager.getCurrentDimension();
+                    if (currentDimension) {
+                        currentDimension.onEnter(engine.state);
+                        playerProjectiles = [];
+                        console.log(`Jumped to Level ${levelNum}: ${currentDimension.name}`);
+                    }
+                }
+                return;
+            }
+
+            // DEBUG MODE: Press 0 to fully heal and restore lives
+            if (debugMode && e.key === '0') {
+                playerHealth = MAX_HEALTH;
+                playerLives = 4;
+                console.log('Debug: Fully healed!');
+                return;
+            }
+
             // Press M to toggle mouse movement
             if (e.key === 'm' || e.key === 'M') {
                 useMouseMovement = !useMouseMovement;
@@ -999,6 +1032,30 @@
             ctx.fillText('Arrow Keys = Move', 10, 220);
             ctx.fillText('WASD = Shoot Direction', 10, 235);
             ctx.fillText('Space = Shoot Up', 10, 250);
+
+            // DEBUG MODE INDICATOR
+            if (debugMode) {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                ctx.fillRect(canvas.width - 180, 10, 170, 100);
+
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(canvas.width - 180, 10, 170, 100);
+
+                ctx.fillStyle = '#ffff00';
+                ctx.font = 'bold 16px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('🔧 DEBUG MODE', canvas.width - 95, 30);
+
+                ctx.fillStyle = '#fff';
+                ctx.font = '12px Courier New';
+                ctx.fillText('1-5: Jump to Level', canvas.width - 95, 50);
+                ctx.fillText('0: Heal & Lives', canvas.width - 95, 65);
+                ctx.fillText('`: Toggle Debug', canvas.width - 95, 80);
+                ctx.fillText(`Level: ${dimensionManager.currentDimensionIndex + 1}`, canvas.width - 95, 100);
+
+                ctx.textAlign = 'left';
+            }
 
             // Active power-up indicators
             let powerupY = 270;
