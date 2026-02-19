@@ -10,6 +10,7 @@ import { BossScene } from './scenes/BossScene';
 import { HUDScene } from './scenes/HUDScene';
 import { MathPuzzleScene } from './scenes/MathPuzzleScene';
 import { PracticeScene } from './scenes/PracticeScene';
+import { VictoryScene } from './scenes/VictoryScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -22,7 +23,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, PlayerCountScene, CharacterSelectScene, ModeSelectScene, TitleScene, CollectionScene, BossScene, MathPuzzleScene, PracticeScene, HUDScene],
+  scene: [BootScene, PlayerCountScene, CharacterSelectScene, ModeSelectScene, TitleScene, CollectionScene, BossScene, MathPuzzleScene, PracticeScene, VictoryScene, HUDScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
