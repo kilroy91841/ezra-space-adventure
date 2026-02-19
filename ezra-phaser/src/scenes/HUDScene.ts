@@ -15,6 +15,11 @@ export class HUDScene extends Phaser.Scene {
   private p1Label?: Phaser.GameObjects.Text;
   private p2Label?: Phaser.GameObjects.Text;
 
+  // Debug mode
+  private debugMode: boolean = false;
+  private debugText?: Phaser.GameObjects.Text;
+  private fpsText?: Phaser.GameObjects.Text;
+
   constructor() {
     super({ key: 'HUDScene' });
   }
@@ -88,6 +93,9 @@ export class HUDScene extends Phaser.Scene {
         fontFamily: 'Courier New', fontSize: '12px', color: '#ffff00', fontStyle: 'bold',
       }).setOrigin(0.5).setVisible(false);
     }
+
+    // --- Debug mode ---
+    this.setupDebugMode();
   }
 
   update(): void {
@@ -116,6 +124,9 @@ export class HUDScene extends Phaser.Scene {
 
     // Update player name label positions
     this.updatePlayerLabels();
+
+    // Update debug overlay
+    this.updateDebugOverlay(gameData);
   }
 
   private updateWeaponHighlights(): void {
@@ -157,5 +168,72 @@ export class HUDScene extends Phaser.Scene {
       }
       break;
     }
+  }
+
+  // --- Debug Mode ---
+
+  private setupDebugMode(): void {
+    // Debug overlay texts
+    this.debugText = this.add.text(10, 80, '', {
+      fontFamily: 'Courier New', fontSize: '14px', color: '#ff00ff',
+    }).setVisible(false);
+
+    this.fpsText = this.add.text(10, 100, '', {
+      fontFamily: 'Courier New', fontSize: '14px', color: '#ff00ff',
+    }).setVisible(false);
+
+    // Toggle debug mode with backtick
+    this.input.keyboard!.on('keydown-BACKQUOTE', () => {
+      this.debugMode = !this.debugMode;
+      this.debugText?.setVisible(this.debugMode);
+      this.fpsText?.setVisible(this.debugMode);
+    });
+
+    // Debug number keys: 0 = heal, 1-5 = jump to dimension
+    const keyNames = ['ZERO', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'];
+    for (let i = 0; i <= 5; i++) {
+      this.input.keyboard!.on(`keydown-${keyNames[i]}`, () => {
+        if (!this.debugMode) return;
+
+        const gameData = this.registry.get('gameData') as GameData;
+        if (!gameData) return;
+
+        if (i === 0) {
+          // Full heal
+          gameData.health = MAX_HEALTH;
+          gameData.lives = Math.max(gameData.lives, 4);
+          this.registry.set('gameData', gameData);
+        } else {
+          // Jump to dimension (1-indexed key maps to 0-indexed array)
+          const dimIndex = i - 1;
+          const dim = DIMENSION_ORDER[dimIndex];
+          if (!dim) return;
+
+          gameData.currentDimension = dimIndex;
+          this.registry.set('gameData', gameData);
+
+          // Stop all active gameplay scenes (not HUD)
+          const activeScenes = this.scene.manager.getScenes(true);
+          for (const scene of activeScenes) {
+            if (scene !== this) {
+              this.scene.stop(scene);
+            }
+          }
+
+          // Start the target dimension scene
+          this.scene.manager.start(dim.sceneKey, { dimensionIndex: dimIndex });
+        }
+      });
+    }
+  }
+
+  private updateDebugOverlay(gameData: GameData): void {
+    if (!this.debugMode) return;
+
+    const dim = DIMENSION_ORDER[gameData.currentDimension];
+    this.debugText?.setText(
+      `DEBUG | Dim: ${gameData.currentDimension + 1} (${dim?.name ?? 'unknown'}) | HP: ${gameData.health} | Lives: ${gameData.lives}`
+    );
+    this.fpsText?.setText(`FPS: ${Math.round(this.game.loop.actualFps)}`);
   }
 }
