@@ -1,8 +1,9 @@
 export const GAME_WIDTH = 1200;
 export const GAME_HEIGHT = 900;
 
-export const PLAYER_START_X = (GAME_WIDTH - 40) / 2;
-export const PLAYER_START_Y = (GAME_HEIGHT - 50) / 2;
+// Phaser sprites use center origin, so center of screen is correct
+export const PLAYER_START_X = GAME_WIDTH / 2;
+export const PLAYER_START_Y = GAME_HEIGHT / 2;
 
 export const PLAYER_WIDTH = 40;
 export const PLAYER_HEIGHT = 50;
