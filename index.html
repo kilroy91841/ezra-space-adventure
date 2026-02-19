@@ -50,7 +50,8 @@
         <div>Dimension: <span id="dimension">1</span> | Power-Ups: <span id="powerups">0</span> | Score: <span id="score">0</span></div>
     </div>
     <div class="controls">
-        <strong>Controls:</strong> Arrow Keys OR Mouse = Move | M = Toggle Mouse/Keyboard | SPACEBAR = Shoot | 1-4 = Switch Weapons
+        <strong>P1:</strong> Arrow Keys/Mouse = Move | WASD/Space = Shoot | 1-4 = Weapons | M = Mouse/Keyboard<br>
+        <strong>P2:</strong> Follows P1 | Tab = Smart Shoot | Q/E/R/T = Weapons
     </div>
 
     <script type="module">
@@ -73,19 +74,13 @@
         // Initialize game engine
         const engine = new GameEngine();
 
-        // Create player
-        const player = new Player(385, 500);
-        engine.addEntity(player);
+        // Players (created after character selection)
+        let player1 = null;
+        let player2 = null;
 
-        // Give player Ezra's favorite weapons!
-        player.weapon = new IceShooter(); // Start with Ice Shooter
-        player.inventory = [
-            new IceShooter(),
-            new FireShooter(),
-            new GiantSword(),
-            new BigBomb()
-        ];
-        let currentWeaponIndex = 0;
+        // Weapon indices for independent selection
+        let player1WeaponIndex = 0;
+        let player2WeaponIndex = 0;
 
         // Create dimension manager
         const dimensionManager = new DimensionManager();
@@ -105,12 +100,22 @@
         let gameWon = false;
         let gameOver = false;
         let gameStarted = false;
-        let characterSelected = false;
-        let selectedCharacter = null;
-        let hoveredCharacterIndex = -1;
         let gameModeSelected = false;
         let isPracticeMode = false;
         let hoveredButton = null;
+
+        // Player count selection
+        let playerCountSelected = false;
+        let playerCount = 1; // 1 or 2
+        let hoveredPlayerCount = null; // '1player' or '2player'
+
+        // Character selection
+        let characterSelected = false;
+        let player1CharacterSelected = false;
+        let player2CharacterSelected = false;
+        let selectedCharacter1 = null;
+        let selectedCharacter2 = null;
+        let hoveredCharacterIndex = -1;
 
         // DEBUG MODE
         let debugMode = false;
@@ -149,6 +154,24 @@
             const rect = canvas.getBoundingClientRect();
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
+
+            // Player count selection hover
+            if (!playerCountSelected) {
+                const onePlayerBtn = { x: canvas.width / 2 - 350, y: 300, width: 300, height: 150 };
+                const twoPlayerBtn = { x: canvas.width / 2 + 50, y: 300, width: 300, height: 150 };
+
+                if (mx >= onePlayerBtn.x && mx <= onePlayerBtn.x + onePlayerBtn.width &&
+                    my >= onePlayerBtn.y && my <= onePlayerBtn.y + onePlayerBtn.height) {
+                    hoveredPlayerCount = '1player';
+                } else if (mx >= twoPlayerBtn.x && mx <= twoPlayerBtn.x + twoPlayerBtn.width &&
+                           my >= twoPlayerBtn.y && my <= twoPlayerBtn.y + twoPlayerBtn.height) {
+                    hoveredPlayerCount = '2player';
+                } else {
+                    hoveredPlayerCount = null;
+                }
+                canvas.style.cursor = hoveredPlayerCount ? 'pointer' : 'default';
+                return;
+            }
 
             // Character selection hover
             if (!characterSelected) {
@@ -217,6 +240,23 @@
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
 
+            // Player count selection click
+            if (!playerCountSelected) {
+                const onePlayerBtn = { x: canvas.width / 2 - 350, y: 300, width: 300, height: 150 };
+                const twoPlayerBtn = { x: canvas.width / 2 + 50, y: 300, width: 300, height: 150 };
+
+                if (clickX >= onePlayerBtn.x && clickX <= onePlayerBtn.x + onePlayerBtn.width &&
+                    clickY >= onePlayerBtn.y && clickY <= onePlayerBtn.y + onePlayerBtn.height) {
+                    playerCount = 1;
+                    playerCountSelected = true;
+                } else if (clickX >= twoPlayerBtn.x && clickX <= twoPlayerBtn.x + twoPlayerBtn.width &&
+                           clickY >= twoPlayerBtn.y && clickY <= twoPlayerBtn.y + twoPlayerBtn.height) {
+                    playerCount = 2;
+                    playerCountSelected = true;
+                }
+                return;
+            }
+
             // Character selection
             if (!characterSelected) {
                 // Check if clicked on a character
@@ -233,9 +273,18 @@
 
                     if (clickX >= x && clickX <= x + boxWidth &&
                         clickY >= y && clickY <= y + boxHeight) {
-                        selectedCharacter = char;
-                        characterSelected = true;
-                        player.setCharacterType(char);
+                        if (playerCount === 1) {
+                            selectedCharacter1 = char;
+                            player1CharacterSelected = true;
+                            characterSelected = true;
+                        } else if (!player1CharacterSelected) {
+                            selectedCharacter1 = char;
+                            player1CharacterSelected = true;
+                        } else if (!player2CharacterSelected) {
+                            selectedCharacter2 = char;
+                            player2CharacterSelected = true;
+                            characterSelected = true;
+                        }
                     }
                 });
                 return;
@@ -249,6 +298,32 @@
                     clickY >= adventureBtn.y && clickY <= adventureBtn.y + adventureBtn.height) {
                     gameModeSelected = true;
                     isPracticeMode = false;
+
+                    // Create players based on count
+                    const centerX = (canvas.width - 40) / 2;
+                    const centerY = (canvas.height - 50) / 2;
+
+                    player1 = new Player(centerX, centerY, selectedCharacter1);
+                    engine.addEntity(player1);
+                    player1.weapon = new IceShooter();
+                    player1.inventory = [
+                        new IceShooter(),
+                        new FireShooter(),
+                        new GiantSword(),
+                        new BigBomb()
+                    ];
+
+                    if (playerCount === 2) {
+                        player2 = new Player(centerX + 60, centerY + 30, selectedCharacter2);
+                        engine.addEntity(player2);
+                        player2.weapon = new IceShooter();
+                        player2.inventory = [
+                            new IceShooter(),
+                            new FireShooter(),
+                            new GiantSword(),
+                            new BigBomb()
+                        ];
+                    }
                     return;
                 }
 
@@ -260,15 +335,32 @@
                     isPracticeMode = true;
                     gameStarted = true; // Auto-start practice mode
 
-                    // Give player ALL weapons in practice mode!
-                    player.weapon = new IceShooter();
-                    player.inventory = [
+                    // Create players based on count
+                    const centerX = (canvas.width - 40) / 2;
+                    const centerY = (canvas.height - 50) / 2;
+
+                    player1 = new Player(centerX, centerY, selectedCharacter1);
+                    engine.addEntity(player1);
+                    player1.weapon = new IceShooter();
+                    player1.inventory = [
                         new IceShooter(),
                         new FireShooter(),
                         new GiantSword(),
                         new BigBomb()
                     ];
-                    currentWeaponIndex = 0;
+                    player1WeaponIndex = 0;
+
+                    if (playerCount === 2) {
+                        player2 = new Player(centerX + 60, centerY + 30, selectedCharacter2);
+                        engine.addEntity(player2);
+                        player2.weapon = new IceShooter();
+                        player2.inventory = [
+                            new IceShooter(),
+                            new FireShooter(),
+                            new GiantSword(),
+                            new BigBomb()
+                        ];
+                    }
 
                     // Full health and unlimited lives in practice!
                     playerHealth = MAX_HEALTH;
@@ -297,6 +389,11 @@
         // Keyboard input
         const keys = {};
         window.addEventListener('keydown', (e) => {
+            // Prevent Tab from changing browser focus
+            if (e.key === 'Tab') {
+                e.preventDefault();
+            }
+
             // Press ` (backtick) to toggle DEBUG MODE
             if (e.key === '`') {
                 debugMode = !debugMode;
@@ -332,6 +429,19 @@
                 return;
             }
 
+            // Player count selection shortcuts
+            if (!playerCountSelected && !characterSelected) {
+                if (e.key === '1') {
+                    playerCount = 1;
+                    playerCountSelected = true;
+                    return;
+                } else if (e.key === '2') {
+                    playerCount = 2;
+                    playerCountSelected = true;
+                    return;
+                }
+            }
+
             // Press M to toggle mouse movement
             if (e.key === 'm' || e.key === 'M') {
                 useMouseMovement = !useMouseMovement;
@@ -363,11 +473,23 @@
 
             // Switch weapons with number keys (only if not in math dimension)
             if (!currentDimension || !currentDimension.handleKeyPress) {
-                if (e.key >= '1' && e.key <= '4') {
+                if (e.key >= '1' && e.key <= '4' && player1) {
                     const index = parseInt(e.key) - 1;
-                    if (index < player.inventory.length) {
-                        currentWeaponIndex = index;
-                        player.weapon = player.inventory[currentWeaponIndex];
+                    if (index < player1.inventory.length) {
+                        player1WeaponIndex = index;
+                        player1.weapon = player1.inventory[player1WeaponIndex];
+                    }
+                }
+            }
+
+            // Player 2 weapon switching (Q/E/R/T)
+            if (player2 && (!currentDimension || !currentDimension.handleKeyPress)) {
+                const p2KeyMap = { 'q': 0, 'Q': 0, 'e': 1, 'E': 1, 'r': 2, 'R': 2, 't': 3, 'T': 3 };
+                if (e.key in p2KeyMap) {
+                    const index = p2KeyMap[e.key];
+                    if (index < player2.inventory.length) {
+                        player2WeaponIndex = index;
+                        player2.weapon = player2.inventory[player2WeaponIndex];
                     }
                 }
             }
@@ -388,14 +510,67 @@
             });
         }
 
+        // Find nearest enemy to a player (for Player 2 smart shooting)
+        function findNearestEnemy(fromPlayer, maxDistance) {
+            let nearestEnemy = null;
+            let shortestDistance = maxDistance;
+
+            const allEnemies = [];
+
+            // Check boss
+            if (currentDimension && currentDimension.boss &&
+                !currentDimension.boss.defeated && !currentDimension.boss.isAlly) {
+                allEnemies.push(currentDimension.boss);
+            }
+
+            // Check chasing enemies
+            if (currentDimension && currentDimension.getChasingEnemies) {
+                const chasingEnemies = currentDimension.getChasingEnemies();
+                allEnemies.push(...chasingEnemies.filter(e => e && e.active && !e.isAlly));
+            }
+
+            for (const enemy of allEnemies) {
+                const dist = Math.sqrt(
+                    Math.pow(enemy.x + enemy.width/2 - (fromPlayer.x + fromPlayer.width/2), 2) +
+                    Math.pow(enemy.y + enemy.height/2 - (fromPlayer.y + fromPlayer.height/2), 2)
+                );
+                if (dist < shortestDistance) {
+                    nearestEnemy = enemy;
+                    shortestDistance = dist;
+                }
+            }
+
+            return nearestEnemy;
+        }
+
+        // Update Player 2 AI follow behavior
+        function updatePlayer2Follow(deltaTime) {
+            if (!player2 || !player1) return;
+
+            const targetDistance = 70;
+            const followSpeed = player1.speed;
+
+            const dx = player1.x - player2.x;
+            const dy = player1.y - player2.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > targetDistance) {
+                const moveX = (dx / distance) * followSpeed;
+                const moveY = (dy / distance) * followSpeed;
+                player2.setVelocity(moveX, moveY);
+            } else {
+                player2.setVelocity(player1.vx, player1.vy);
+            }
+        }
+
         // Game loop
         let lastTime = 0;
         function gameLoop(currentTime) {
             const deltaTime = Math.min((currentTime - lastTime) / 16.67, 2); // Normalize to 60fps, cap at 2x
             lastTime = currentTime;
 
-            // Character selection screen
-            if (!characterSelected) {
+            // Player count selection screen
+            if (!playerCountSelected) {
                 ctx.fillStyle = '#000';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -409,7 +584,81 @@
                 ctx.fillStyle = '#00ff00';
                 ctx.font = 'bold 48px Courier New';
                 ctx.textAlign = 'center';
-                ctx.fillText("CHOOSE YOUR CHARACTER", canvas.width / 2, 120);
+                ctx.fillText("HOW MANY PLAYERS?", canvas.width / 2, 150);
+
+                // 1 Player button
+                const onePlayerBtn = { x: canvas.width / 2 - 350, y: 300, width: 300, height: 150 };
+                const oneHovered = hoveredPlayerCount === '1player';
+                ctx.fillStyle = oneHovered ? '#0088ff' : '#0066cc';
+                ctx.fillRect(onePlayerBtn.x, onePlayerBtn.y, onePlayerBtn.width, onePlayerBtn.height);
+                ctx.strokeStyle = oneHovered ? '#ffff00' : '#fff';
+                ctx.lineWidth = oneHovered ? 4 : 2;
+                ctx.strokeRect(onePlayerBtn.x, onePlayerBtn.y, onePlayerBtn.width, onePlayerBtn.height);
+
+                // 1 Player icon (single silhouette)
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(onePlayerBtn.x + 150, onePlayerBtn.y + 60, 20, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillRect(onePlayerBtn.x + 130, onePlayerBtn.y + 85, 40, 50);
+
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 28px Courier New';
+                ctx.fillText('1 PLAYER', onePlayerBtn.x + onePlayerBtn.width / 2, onePlayerBtn.y + onePlayerBtn.height - 20);
+
+                // 2 Players button
+                const twoPlayerBtn = { x: canvas.width / 2 + 50, y: 300, width: 300, height: 150 };
+                const twoHovered = hoveredPlayerCount === '2player';
+                ctx.fillStyle = twoHovered ? '#00aa00' : '#008800';
+                ctx.fillRect(twoPlayerBtn.x, twoPlayerBtn.y, twoPlayerBtn.width, twoPlayerBtn.height);
+                ctx.strokeStyle = twoHovered ? '#ffff00' : '#fff';
+                ctx.lineWidth = twoHovered ? 4 : 2;
+                ctx.strokeRect(twoPlayerBtn.x, twoPlayerBtn.y, twoPlayerBtn.width, twoPlayerBtn.height);
+
+                // 2 Players icons (two silhouettes)
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(twoPlayerBtn.x + 110, twoPlayerBtn.y + 60, 18, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillRect(twoPlayerBtn.x + 92, twoPlayerBtn.y + 82, 36, 45);
+                ctx.beginPath();
+                ctx.arc(twoPlayerBtn.x + 190, twoPlayerBtn.y + 60, 18, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillRect(twoPlayerBtn.x + 172, twoPlayerBtn.y + 82, 36, 45);
+
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 28px Courier New';
+                ctx.fillText('2 PLAYERS', twoPlayerBtn.x + twoPlayerBtn.width / 2, twoPlayerBtn.y + twoPlayerBtn.height - 20);
+
+                // Instructions
+                ctx.fillStyle = '#fff';
+                ctx.font = '18px Courier New';
+                ctx.fillText('Press 1 or 2, or click to choose', canvas.width / 2, 500);
+
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            // Character selection screen
+            if (playerCountSelected && !characterSelected) {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw stars
+                stars.forEach(star => {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(star.x, star.y, star.size, star.size);
+                });
+
+                // Title - show which player is selecting
+                ctx.fillStyle = '#00ff00';
+                ctx.font = 'bold 48px Courier New';
+                ctx.textAlign = 'center';
+                if (playerCount === 1 || !player1CharacterSelected) {
+                    ctx.fillText("EZRA - CHOOSE YOUR CHARACTER", canvas.width / 2, 120);
+                } else if (!player2CharacterSelected) {
+                    ctx.fillText("RONEN - CHOOSE YOUR CHARACTER", canvas.width / 2, 120);
+                }
 
                 ctx.fillStyle = '#ffff00';
                 ctx.font = '24px Courier New';
@@ -472,9 +721,12 @@
                 ctx.fillText("CHOOSE YOUR MODE", canvas.width / 2, 150);
 
                 // Character preview
-                player.x = (canvas.width - player.width) / 2;
-                player.y = 200;
-                player.render(ctx);
+                if (selectedCharacter1) {
+                    selectedCharacter1.render(ctx, (canvas.width - 40) / 2, 200, 40, 50);
+                }
+                if (selectedCharacter2) {
+                    selectedCharacter2.render(ctx, (canvas.width - 40) / 2 + 60, 200, 40, 50);
+                }
 
                 // Adventure button
                 const adventureBtn = { x: canvas.width / 2 - 350, y: 350, width: 300, height: 100 };
@@ -536,9 +788,16 @@
                 ctx.fillText("SPACE ADVENTURE", canvas.width / 2, 250);
 
                 // Character preview
-                player.x = (canvas.width - player.width) / 2;
-                player.y = 300;
-                player.render(ctx);
+                if (player1) {
+                    player1.x = (canvas.width - player1.width) / 2;
+                    player1.y = 300;
+                    player1.render(ctx);
+                }
+                if (player2) {
+                    player2.x = player1.x + 60;
+                    player2.y = 300;
+                    player2.render(ctx);
+                }
 
                 // Instructions
                 ctx.fillStyle = '#ffff00';
@@ -554,31 +813,35 @@
             }
 
             // Handle player input
+            if (!player1) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
             let vx = 0, vy = 0;
 
             if (useMouseMovement) {
                 // Mouse movement - move towards mouse position
-                const dx = mouseX - player.x;
-                const dy = mouseY - player.y;
+                const dx = mouseX - player1.x;
+                const dy = mouseY - player1.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
                 if (distance > 5) { // Dead zone
-                    vx = (dx / distance) * player.speed;
-                    vy = (dy / distance) * player.speed;
+                    vx = (dx / distance) * player1.speed;
+                    vy = (dy / distance) * player1.speed;
                 }
             } else {
                 // Keyboard movement
-                if (keys['ArrowLeft']) vx = -player.speed;
-                if (keys['ArrowRight']) vx = player.speed;
-                if (keys['ArrowUp']) vy = -player.speed;
-                if (keys['ArrowDown']) vy = player.speed;
+                if (keys['ArrowLeft']) vx = -player1.speed;
+                if (keys['ArrowRight']) vx = player1.speed;
+                if (keys['ArrowUp']) vy = -player1.speed;
+                if (keys['ArrowDown']) vy = player1.speed;
             }
 
-            player.setVelocity(vx, vy);
+            player1.setVelocity(vx, vy);
 
             // Apply bounce effect from trampoline!
             if (bounceVelocityY !== 0) {
-                player.vy += bounceVelocityY;
+                player1.vy += bounceVelocityY;
                 bounceVelocityY *= 0.95; // Decay the bounce
                 if (Math.abs(bounceVelocityY) < 0.5) {
                     bounceVelocityY = 0; // Stop when very small
@@ -616,8 +879,8 @@
             }
 
             // Fire weapon if any shoot key is pressed
-            if (shouldShoot && shootCooldown <= 0 && player.weapon) {
-                const newProjectiles = player.weapon.fire(player, engine.state.entities);
+            if (shouldShoot && shootCooldown <= 0 && player1.weapon) {
+                const newProjectiles = player1.weapon.fire(player1, engine.state.entities);
 
                 // Apply directional shooting to projectiles
                 newProjectiles.forEach(proj => {
@@ -639,17 +902,59 @@
             }
             if (shootCooldown > 0) shootCooldown -= deltaTime;
 
-            // Constrain player to canvas
-            if (player.x < 0) player.x = 0;
-            if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
-            if (player.y < 0) player.y = 0;
-            if (player.y > canvas.height - player.height) player.y = canvas.height - player.height;
+            // Player 2 shooting (Tab key with smart auto-aim)
+            if (keys['Tab'] && player2 && player2.weapon && gameStarted) {
+                const nearestEnemy = findNearestEnemy(player2, 400);
+                let p2ShootDirX = 0;
+                let p2ShootDirY = -1;
+
+                if (nearestEnemy) {
+                    const dx = (nearestEnemy.x + nearestEnemy.width/2) - (player2.x + player2.width/2);
+                    const dy = (nearestEnemy.y + nearestEnemy.height/2) - (player2.y + player2.height/2);
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    p2ShootDirX = dx / distance;
+                    p2ShootDirY = dy / distance;
+                }
+
+                if (shootCooldown <= 0) {
+                    const newProjectiles = player2.weapon.fire(player2, engine.state.entities);
+                    newProjectiles.forEach(proj => {
+                        if (proj.vx !== undefined && proj.vy !== undefined) {
+                            const speed = Math.sqrt(proj.vx * proj.vx + proj.vy * proj.vy);
+                            const dirLength = Math.sqrt(p2ShootDirX * p2ShootDirX + p2ShootDirY * p2ShootDirY);
+                            if (dirLength > 0) {
+                                proj.vx = (p2ShootDirX / dirLength) * speed;
+                                proj.vy = (p2ShootDirY / dirLength) * speed;
+                            }
+                        }
+                    });
+                    playerProjectiles.push(...newProjectiles);
+                    shootCooldown = SHOOT_RATE;
+                }
+            }
+
+            // Update Player 2 follow behavior (velocity set here, position updated by engine)
+            if (player2) {
+                updatePlayer2Follow(deltaTime);
+            }
+
+            // Constrain players to canvas
+            if (player1.x < 0) player1.x = 0;
+            if (player1.x > canvas.width - player1.width) player1.x = canvas.width - player1.width;
+            if (player1.y < 0) player1.y = 0;
+            if (player1.y > canvas.height - player1.height) player1.y = canvas.height - player1.height;
+            if (player2) {
+                if (player2.x < 0) player2.x = 0;
+                if (player2.x > canvas.width - player2.width) player2.x = canvas.width - player2.width;
+                if (player2.y < 0) player2.y = 0;
+                if (player2.y > canvas.height - player2.height) player2.y = canvas.height - player2.height;
+            }
 
             // Update engine
             engine.update(deltaTime);
 
-            // Update current dimension (pass player for chasing enemy)
-            currentDimension.update(deltaTime, engine.state, player);
+            // Update current dimension (pass player1 for chasing enemy)
+            currentDimension.update(deltaTime, engine.state, player1);
 
             // Update player projectiles
             playerProjectiles = playerProjectiles.filter(p => {
@@ -741,7 +1046,8 @@
             if (speedBoostTimer > 0) {
                 speedBoostTimer -= deltaTime;
                 if (speedBoostTimer <= 0) {
-                    player.speed = NORMAL_SPEED; // Reset to normal speed
+                    player1.speed = NORMAL_SPEED;
+                    if (player2) player2.speed = NORMAL_SPEED;
                 }
             }
 
@@ -749,73 +1055,92 @@
                 shieldTimer -= deltaTime;
             }
 
-            // Collision detection - enemy projectiles vs player
+            // Collision detection - enemy projectiles vs players
             const enemyProjectiles = currentDimension.getEnemyProjectiles ? currentDimension.getEnemyProjectiles() : [];
-            enemyProjectiles.forEach(proj => {
-                if (proj.active && proj.collidesWith(player) && invulnerableTimer <= 0) {
-                    proj.destroy();
+            [player1, player2].forEach(p => {
+                if (!p) return;
+                enemyProjectiles.forEach(proj => {
+                    if (proj.active && proj.collidesWith(p) && invulnerableTimer <= 0) {
+                        proj.destroy();
 
-                    // Shield blocks damage!
-                    if (shieldTimer > 0) {
-                        particles.push(...createHitEffect(proj.x + proj.width / 2, proj.y + proj.height / 2, '#00ffff'));
-                        return;
-                    }
+                        // Shield blocks damage!
+                        if (shieldTimer > 0) {
+                            particles.push(...createHitEffect(proj.x + proj.width / 2, proj.y + proj.height / 2, '#00ffff'));
+                            return;
+                        }
 
-                    player.removePowerup();
+                        p.removePowerup();
 
-                    // Take damage!
-                    playerHealth -= 20;
-                    invulnerableTimer = 60; // 1 second invulnerability
+                        // Take damage! (shared health)
+                        playerHealth -= 20;
+                        invulnerableTimer = 60; // 1 second invulnerability
 
-                    if (playerHealth <= 0) {
-                        playerLives--;
-                        if (playerLives <= 0) {
-                            // GAME OVER - restart entire game!
-                            location.reload();
-                        } else {
-                            // Restart current dimension
-                            playerHealth = MAX_HEALTH;
-                            currentDimension.onEnter(engine.state);
-                            playerProjectiles = [];
-                            invulnerableTimer = 120; // 2 seconds invulnerability after respawn
+                        if (playerHealth <= 0) {
+                            playerLives--;
+                            if (playerLives <= 0) {
+                                location.reload();
+                            } else {
+                                playerHealth = MAX_HEALTH;
+                                currentDimension.onEnter(engine.state);
+                                playerProjectiles = [];
+                                invulnerableTimer = 120;
+                                // Reset both players to center
+                                const centerX = (canvas.width - 40) / 2;
+                                const centerY = (canvas.height - 50) / 2;
+                                player1.x = centerX;
+                                player1.y = centerY;
+                                if (player2) {
+                                    player2.x = centerX + 60;
+                                    player2.y = centerY + 30;
+                                }
+                            }
                         }
                     }
-                }
+                });
             });
 
-            // Collision detection - chasing enemies vs player
+            // Collision detection - chasing enemies vs players
             const chasingEnemies = currentDimension.getChasingEnemies ? currentDimension.getChasingEnemies() : [];
-            chasingEnemies.forEach(alien => {
-                if (alien && alien.collidesWith(player) && invulnerableTimer <= 0) {
-                    player.removePowerup();
+            [player1, player2].forEach(p => {
+                if (!p) return;
+                chasingEnemies.forEach(alien => {
+                    if (alien && alien.collidesWith(p) && invulnerableTimer <= 0) {
+                        p.removePowerup();
 
-                    // Take damage!
-                    playerHealth -= 15;
-                    invulnerableTimer = 60; // 1 second invulnerability
+                        // Take damage! (shared health)
+                        playerHealth -= 15;
+                        invulnerableTimer = 60;
 
-                    if (playerHealth <= 0) {
-                        playerLives--;
-                        if (playerLives <= 0) {
-                            // GAME OVER - restart entire game!
-                            location.reload();
-                        } else {
-                            // Restart current dimension
-                            playerHealth = MAX_HEALTH;
-                            currentDimension.onEnter(engine.state);
-                            playerProjectiles = [];
-                            invulnerableTimer = 120; // 2 seconds invulnerability after respawn
+                        if (playerHealth <= 0) {
+                            playerLives--;
+                            if (playerLives <= 0) {
+                                location.reload();
+                            } else {
+                                playerHealth = MAX_HEALTH;
+                                currentDimension.onEnter(engine.state);
+                                playerProjectiles = [];
+                                invulnerableTimer = 120;
+                                const centerX = (canvas.width - 40) / 2;
+                                const centerY = (canvas.height - 50) / 2;
+                                player1.x = centerX;
+                                player1.y = centerY;
+                                if (player2) {
+                                    player2.x = centerX + 60;
+                                    player2.y = centerY + 30;
+                                }
+                            }
+                        }
+
+                        // Push player away
+                        const dx = p.x - alien.x;
+                        const dy = p.y - alien.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance > 0) {
+                            p.x += (dx / distance) * 20;
+                            p.y += (dy / distance) * 20;
                         }
                     }
-
-                    // Push player away
-                    const dx = player.x - alien.x;
-                    const dy = player.y - alien.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance > 0) {
-                        player.x += (dx / distance) * 20;
-                        player.y += (dy / distance) * 20;
-                    }
-                }
+                });
             });
 
             // Collision detection - player projectiles vs chasing enemies
@@ -846,71 +1171,71 @@
                 }
             });
 
-            // Collision detection - power-ups
+            // Collision detection - power-ups (either player can collect)
             const powerups = currentDimension.getPowerUps ? currentDimension.getPowerUps() : [];
-            powerups.forEach(powerup => {
-                if (powerup.active && powerup.collidesWith(player)) {
-                    // Handle special power-up types!
-                    if (powerup.type === 'speed') {
-                        speedBoostTimer = powerup.duration;
-                        player.speed = BOOSTED_SPEED;
-                    } else if (powerup.type === 'life') {
-                        playerLives++;
-                    } else if (powerup.type === 'shield') {
-                        shieldTimer = powerup.duration;
-                    } else if (powerup.type === 'health') {
-                        playerHealth = Math.min(MAX_HEALTH, playerHealth + powerup.healAmount);
-                    } else {
-                        // Regular power-up
-                        player.addPowerup();
-                    }
+            [player1, player2].forEach(p => {
+                if (!p) return;
+                powerups.forEach(powerup => {
+                    if (powerup.active && powerup.collidesWith(p)) {
+                        if (powerup.type === 'speed') {
+                            speedBoostTimer = powerup.duration;
+                            player1.speed = BOOSTED_SPEED;
+                            if (player2) player2.speed = BOOSTED_SPEED;
+                        } else if (powerup.type === 'life') {
+                            playerLives++;
+                        } else if (powerup.type === 'shield') {
+                            shieldTimer = powerup.duration;
+                        } else if (powerup.type === 'health') {
+                            playerHealth = Math.min(MAX_HEALTH, playerHealth + powerup.healAmount);
+                        } else {
+                            p.addPowerup();
+                        }
 
-                    powerup.collect();
-                    if (currentDimension.collectPowerup) {
-                        currentDimension.collectPowerup();
+                        powerup.collect();
+                        if (currentDimension.collectPowerup) {
+                            currentDimension.collectPowerup();
+                        }
+                        engine.state.score += 50;
+                        particles.push(...createSparkle(powerup.x + powerup.width / 2, powerup.y + powerup.height / 2));
                     }
-                    engine.state.score += 50;
-
-                    // Sparkle effect!
-                    particles.push(...createSparkle(powerup.x + powerup.width / 2, powerup.y + powerup.height / 2));
-                }
+                });
             });
 
             // Collision detection - damage traps
             const traps = currentDimension.getTraps ? currentDimension.getTraps() : [];
-            traps.forEach(trap => {
-                if (trap.active && trap.collidesWith(player)) {
-                    // OUCH! Lose power-ups!
-                    player.removePowerup();
-                    player.removePowerup();
-                    player.removePowerup(); // Lose 3 power-ups!
-                    trap.trigger();
-
-                    // Red explosion effect!
-                    particles.push(...createHitEffect(trap.x + trap.width / 2, trap.y + trap.height / 2, '#ff0000'));
-                }
+            [player1, player2].forEach(p => {
+                if (!p) return;
+                traps.forEach(trap => {
+                    if (trap.active && trap.collidesWith(p)) {
+                        p.removePowerup();
+                        p.removePowerup();
+                        p.removePowerup();
+                        trap.trigger();
+                        particles.push(...createHitEffect(trap.x + trap.width / 2, trap.y + trap.height / 2, '#ff0000'));
+                    }
+                });
             });
 
             // Collision detection - stage hazards!
             const hazards = currentDimension.getHazards ? currentDimension.getHazards() : [];
-            hazards.forEach(hazard => {
-                if (hazard.collidesWith(player)) {
-                    if (hazard.type === 'lava' && invulnerableTimer <= 0 && shieldTimer <= 0) {
-                        // Lava damages you!
-                        playerHealth -= hazard.damage;
-                        invulnerableTimer = 30; // Brief invulnerability
-                        particles.push(...createHitEffect(player.x + player.width / 2, player.y + player.height / 2, '#ff4400'));
-                    } else if (hazard.type === 'trampoline' && player.vy >= 0) {
-                        // Bounce! (only if moving down or stationary)
-                        bounceVelocityY = -hazard.bounceForce;
-                        hazard.bounce();
-                        particles.push(...createSparkle(hazard.x + hazard.width / 2, hazard.y));
-                    } else if (hazard.type === 'ice') {
-                        // Make player slippery!
-                        player.vx *= hazard.slipperiness;
-                        player.vy *= hazard.slipperiness;
+            [player1, player2].forEach(p => {
+                if (!p) return;
+                hazards.forEach(hazard => {
+                    if (hazard.collidesWith(p)) {
+                        if (hazard.type === 'lava' && invulnerableTimer <= 0 && shieldTimer <= 0) {
+                            playerHealth -= hazard.damage;
+                            invulnerableTimer = 30;
+                            particles.push(...createHitEffect(p.x + p.width / 2, p.y + p.height / 2, '#ff4400'));
+                        } else if (hazard.type === 'trampoline' && p.vy >= 0) {
+                            bounceVelocityY = -hazard.bounceForce;
+                            hazard.bounce();
+                            particles.push(...createSparkle(hazard.x + hazard.width / 2, hazard.y));
+                        } else if (hazard.type === 'ice') {
+                            p.vx *= hazard.slipperiness;
+                            p.vy *= hazard.slipperiness;
+                        }
                     }
-                }
+                });
             });
 
             // Check for dimension completion
@@ -959,9 +1284,23 @@
             // Draw particles
             particles.forEach(p => p.render(ctx));
 
-            // Draw player (flash when invulnerable)
+            // Draw players (flash when invulnerable)
             if (invulnerableTimer <= 0 || Math.floor(invulnerableTimer / 5) % 2 === 0) {
-                player.render(ctx);
+                player1.render(ctx);
+                if (player2) {
+                    player2.render(ctx);
+                }
+            }
+
+            // Player name labels (only in 2-player mode)
+            if (player2) {
+                ctx.font = 'bold 14px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = player1.color;
+                ctx.fillText('EZRA', player1.x + player1.width / 2, player1.y - 5);
+                ctx.fillStyle = player2.color;
+                ctx.fillText('RONEN', player2.x + player2.width / 2, player2.y - 5);
+                ctx.textAlign = 'left';
             }
 
             // Player health bar (top left)
@@ -988,17 +1327,17 @@
             ctx.font = '16px Courier New';
             ctx.fillText(`Lives: ${'❤️'.repeat(playerLives)}`, 10, 55);
 
-            // WEAPON SELECTOR - Big and visible!
+            // WEAPON SELECTOR - Player 1
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 16px Courier New';
-            ctx.fillText('WEAPONS:', 10, 95);
+            ctx.fillText(player2 ? 'EZRA:' : 'WEAPONS:', 10, 95);
 
             // Draw weapon boxes
             const weaponBoxSize = 70;
             const weaponBoxY = 105;
-            player.inventory.forEach((weapon, index) => {
+            player1.inventory.forEach((weapon, index) => {
                 const x = 10 + index * (weaponBoxSize + 10);
-                const isSelected = currentWeaponIndex === index;
+                const isSelected = player1WeaponIndex === index;
 
                 // Box background
                 ctx.fillStyle = isSelected ? '#ffff00' : '#333';
@@ -1032,17 +1371,72 @@
                 ctx.fillText(shortName, x + 3, weaponBoxY + weaponBoxSize - 5);
             });
 
+            // WEAPON SELECTOR - Player 2 (if exists)
+            let controlsStartY = 200;
+            if (player2) {
+                const p2LabelY = 200;
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px Courier New';
+                ctx.textAlign = 'left';
+                ctx.fillText('RONEN:', 10, p2LabelY);
+
+                const p2WeaponBoxY = p2LabelY + 10;
+                const keyLabels = ['Q', 'E', 'R', 'T'];
+
+                player2.inventory.forEach((weapon, index) => {
+                    const x = 10 + index * (weaponBoxSize + 10);
+                    const isSelected = player2WeaponIndex === index;
+
+                    ctx.fillStyle = isSelected ? '#ffff00' : '#333';
+                    ctx.fillRect(x, p2WeaponBoxY, weaponBoxSize, weaponBoxSize);
+
+                    ctx.strokeStyle = isSelected ? '#ff00ff' : '#666';
+                    ctx.lineWidth = isSelected ? 4 : 2;
+                    ctx.strokeRect(x, p2WeaponBoxY, weaponBoxSize, weaponBoxSize);
+
+                    // Weapon icon
+                    ctx.fillStyle = weapon.color || '#fff';
+                    ctx.font = '16px Courier New';
+                    if (weapon.name.includes('Ice')) {
+                        ctx.fillText('❄️', x + 22, p2WeaponBoxY + 35);
+                    } else if (weapon.name.includes('Fire')) {
+                        ctx.fillText('🔥', x + 22, p2WeaponBoxY + 35);
+                    } else if (weapon.name.includes('Sword')) {
+                        ctx.fillText('⚔️', x + 22, p2WeaponBoxY + 35);
+                    } else if (weapon.name.includes('Bomb')) {
+                        ctx.fillText('💣', x + 22, p2WeaponBoxY + 35);
+                    }
+
+                    // Key label
+                    ctx.fillStyle = isSelected ? '#000' : '#fff';
+                    ctx.font = 'bold 14px Courier New';
+                    ctx.fillText(keyLabels[index], x + 5, p2WeaponBoxY + 15);
+
+                    // Weapon name
+                    ctx.font = '10px Courier New';
+                    const shortName = weapon.name.split(' ')[0];
+                    ctx.fillText(shortName, x + 3, p2WeaponBoxY + weaponBoxSize - 5);
+                });
+
+                controlsStartY = p2WeaponBoxY + weaponBoxSize + 15;
+            }
+
             // Movement mode indicator
             ctx.fillStyle = useMouseMovement ? '#00ff00' : '#fff';
             ctx.font = '12px Courier New';
-            ctx.fillText(`${useMouseMovement ? 'MOUSE' : 'KEYBOARD'} mode (M to toggle)`, 10, 200);
+            ctx.fillText(`${useMouseMovement ? 'MOUSE' : 'KEYBOARD'} mode (M to toggle)`, 10, controlsStartY);
 
             // Directional shooting hint
             ctx.fillStyle = '#ffaa00';
             ctx.font = 'bold 12px Courier New';
-            ctx.fillText('Arrow Keys = Move', 10, 220);
-            ctx.fillText('WASD = Shoot Direction', 10, 235);
-            ctx.fillText('Space = Shoot Up', 10, 250);
+            ctx.fillText('P1: Arrow Keys = Move | WASD/Space = Shoot | 1-4 = Weapons', 10, controlsStartY + 20);
+            if (player2) {
+                ctx.fillText('P2: Follows P1 | Tab = Smart Shoot | Q/E/R/T = Weapons', 10, controlsStartY + 35);
+            } else {
+                ctx.fillText('Arrow Keys = Move', 10, controlsStartY + 20);
+                ctx.fillText('WASD = Shoot Direction', 10, controlsStartY + 35);
+                ctx.fillText('Space = Shoot Up', 10, controlsStartY + 50);
+            }
 
             // DEBUG MODE INDICATOR
             if (debugMode) {
@@ -1087,8 +1481,13 @@
                 ctx.strokeStyle = `rgba(0, 204, 255, ${pulse})`;
                 ctx.lineWidth = 3;
                 ctx.beginPath();
-                ctx.arc(player.x + player.width / 2, player.y + player.height / 2, 35, 0, Math.PI * 2);
+                ctx.arc(player1.x + player1.width / 2, player1.y + player1.height / 2, 35, 0, Math.PI * 2);
                 ctx.stroke();
+                if (player2) {
+                    ctx.beginPath();
+                    ctx.arc(player2.x + player2.width / 2, player2.y + player2.height / 2, 35, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
             }
 
             // Victory screen - EPIC!
@@ -1123,18 +1522,25 @@
                 ctx.font = 'bold 40px Courier New';
                 ctx.fillText('The Dragon is Defeated!', 400, 270);
 
-                // Robot victory pose
+                // Victory pose
                 ctx.save();
                 ctx.translate(400, 340);
                 ctx.scale(2, 2);
-                player.render(ctx);
+                player1.render(ctx);
                 ctx.restore();
+                if (player2) {
+                    ctx.save();
+                    ctx.translate(480, 340);
+                    ctx.scale(2, 2);
+                    player2.render(ctx);
+                    ctx.restore();
+                }
 
                 // Stats
                 ctx.fillStyle = '#fff';
                 ctx.font = 'bold 28px Courier New';
                 ctx.fillText(`Final Score: ${engine.state.score}`, 400, 450);
-                ctx.fillText(`Power-Ups Collected: ${player.powerups}`, 400, 485);
+                ctx.fillText(`Power-Ups Collected: ${player1.powerups}`, 400, 485);
 
                 // Dimensions completed
                 ctx.font = '20px Courier New';
@@ -1149,7 +1555,7 @@
 
             // Update UI
             document.getElementById('dimension').textContent = currentDimension ? currentDimension.number : '?';
-            document.getElementById('powerups').textContent = player.powerups;
+            document.getElementById('powerups').textContent = player1 ? player1.powerups : 0;
             document.getElementById('score').textContent = engine.state.score;
             document.getElementById('message').textContent = currentDimension ? currentDimension.name : 'Loading...';
 
