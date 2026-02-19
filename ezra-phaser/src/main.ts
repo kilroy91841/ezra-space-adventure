@@ -6,6 +6,7 @@ import { CharacterSelectScene } from './scenes/CharacterSelectScene';
 import { ModeSelectScene } from './scenes/ModeSelectScene';
 import { TitleScene } from './scenes/TitleScene';
 import { CollectionScene } from './scenes/CollectionScene';
+import { BossScene } from './scenes/BossScene';
 import { HUDScene } from './scenes/HUDScene';
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -19,7 +20,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, PlayerCountScene, CharacterSelectScene, ModeSelectScene, TitleScene, CollectionScene, HUDScene],
+  scene: [BootScene, PlayerCountScene, CharacterSelectScene, ModeSelectScene, TitleScene, CollectionScene, BossScene, HUDScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
